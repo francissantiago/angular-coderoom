@@ -1,0 +1,5 @@
+{
+  "name": "Angular CodeRoom",
+  "description": "Um aplicativo semelhante ao CodePen com a estética do VS Code. Ele apresenta abas separadas para HTML, CSS e JavaScript, um painel de pré-visualização em tempo real e uma simulação de sala de aula com editores de código para 'Professor' e 'Aluno'.",
+  "requestFramePermissions": []
+}
