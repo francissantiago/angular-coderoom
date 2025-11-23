@@ -85,7 +85,7 @@ export class SessionModalComponent {
       return presentCount > 0 && presentCount < studentList.length;
   }
 
-  onSave() {
+  async onSave() {
       const lessonId = this.selectedLessonId();
       if (!lessonId) return;
 
@@ -94,7 +94,7 @@ export class SessionModalComponent {
         .map(Number)
         .filter(id => map[id]);
       
-      this.codeService.registerClassSession({
+        await this.codeService.registerClassSession({
           classId: this.classGroup().id,
           date: this.selectedDate(),
           lessonId: lessonId,

@@ -168,12 +168,12 @@ export class TeacherDashboardComponent {
     this.targetClassIdForNewProject.set(null);
   }
 
-  handleSaveProject(data: { id: number | null; classId: number | null; name: string; description: string }) {
+  async handleSaveProject(data: { id: number | null; classId: number | null; name: string; description: string }) {
     if (data.id) {
       this.codeService.updateProjectDetails(data.id, data.name, data.description);
     } else {
       if (data.classId) {
-        this.codeService.createNewProject(data.classId, data.name, data.description);
+        await this.codeService.createNewProject(data.classId, data.name, data.description);
       }
     }
     this.closeProjectModal();
@@ -185,16 +185,16 @@ export class TeacherDashboardComponent {
     this.newStudentData.update(data => ({ ...data, [field]: value }));
   }
 
-  addNewStudent() {
+  async addNewStudent() {
     const { name, email, enrollmentNumber, birthDate } = this.newStudentData();
     if (!name.trim() || !email.trim() || !enrollmentNumber.trim() || !birthDate.trim()) return;
-    this.codeService.addStudent({ name, email, enrollmentNumber, birthDate });
+    await this.codeService.addStudent({ name, email, enrollmentNumber, birthDate });
     this.newStudentData.set({ name: '', email: '', enrollmentNumber: '', birthDate: '' });
   }
 
-  deleteStudent(studentId: number) {
+  async deleteStudent(studentId: number) {
     if (confirm('Tem certeza que deseja remover este aluno?')) {
-        this.codeService.removeStudent(studentId);
+        await this.codeService.removeStudent(studentId);
     }
   }
 
@@ -227,14 +227,14 @@ export class TeacherDashboardComponent {
     this.classToEdit.set(null); 
   }
 
-  handleSaveClass(data: { id: number | null; name: string; description: string; schedule: string; studentIds: number[] }) {
+  async handleSaveClass(data: { id: number | null; name: string; description: string; schedule: string; studentIds: number[] }) {
     if (data.id) { 
-      this.codeService.updateClassGroup(data.id, data.name, data.description, data.schedule, data.studentIds);
+      await this.codeService.updateClassGroup(data.id, data.name, data.description, data.schedule, data.studentIds);
       // Refresh View
       const updated = this.codeService.classGroups().find(c => c.id === data.id) || null;
       this.selectedClass.set(updated);
     } else { 
-      this.codeService.addNewClassGroup(data.name, data.description, data.schedule, data.studentIds);
+      await this.codeService.addNewClassGroup(data.name, data.description, data.schedule, data.studentIds);
     }
     this.closeClassModal();
   }
@@ -250,20 +250,20 @@ export class TeacherDashboardComponent {
     this.lessonToEdit.set(null);
   }
 
-  handleSaveLesson(data: { id: number | null; title: string; description: string; duration: string; status: 'completed' | 'in-progress' | 'upcoming' }) {
+  async handleSaveLesson(data: { id: number | null; title: string; description: string; duration: string; status: 'completed' | 'in-progress' | 'upcoming' }) {
       const durationNum = parseInt(data.duration) || 1;
       const currentClass = this.selectedClass();
       if (!currentClass) return;
 
-      if (data.id) {
-          this.codeService.updateLessonInClass(currentClass.id, { 
+        if (data.id) {
+          await this.codeService.updateLessonInClass(currentClass.id, { 
               id: data.id, 
               title: data.title, 
               description: data.description, 
               standardDuration: durationNum 
           });
       } else {
-          this.codeService.addLessonToClass(currentClass.id, { 
+          await this.codeService.addLessonToClass(currentClass.id, { 
               title: data.title, 
               description: data.description, 
               standardDuration: durationNum 
@@ -274,11 +274,11 @@ export class TeacherDashboardComponent {
       this.selectedClass.set(updatedClass);
   }
 
-  deleteLesson(lessonId: number) {
+  async deleteLesson(lessonId: number) {
       const currentClass = this.selectedClass();
       if (!currentClass) return;
       if (confirm('Tem certeza que deseja remover esta aula?')) {
-          this.codeService.removeLessonFromClass(currentClass.id, lessonId);
+          await this.codeService.removeLessonFromClass(currentClass.id, lessonId);
           const updatedClass = this.codeService.classGroups().find(g => g.id === currentClass.id) || null;
           this.selectedClass.set(updatedClass);
       }
@@ -337,10 +337,10 @@ export class TeacherDashboardComponent {
       this.certificateManagerData.set(null);
   }
 
-  issueCertificateInManager() {
+  async issueCertificateInManager() {
       const data = this.certificateManagerData();
       if(!data) return;
-      const newCert = this.codeService.issueCertificate(data.student.id, data.classGroup.id);
+      const newCert = await this.codeService.issueCertificate(data.student.id, data.classGroup.id);
       this.certificateManagerData.set({ ...data, existingCert: newCert });
       this.triggerToast('Certificado emitido com sucesso!');
   }
