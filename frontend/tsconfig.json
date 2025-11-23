@@ -20,7 +20,8 @@
       "@pipes/*": ["pipes/*"],
       "@services/*": ["services/*"],
       "@enums/*": ["enums/*"],
-      "@utils/*": ["utils/*"]
+      "@utils/*": ["utils/*"],
+      "@environments/*": ["environments/*"]
     }
   },
   "files": ["./index.tsx"],
