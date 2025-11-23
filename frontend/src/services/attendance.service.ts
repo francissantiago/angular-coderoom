@@ -1,29 +1,42 @@
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { ClassSession } from '../models/domain.models';
+import { HttpClient } from '@angular/common/http';
 
-const MOCK_SESSIONS: ClassSession[] = [
-  // Turma 101 took 3 sessions to finish Lesson 1
-  { id: 1, classId: 1, date: '2023-10-07', lessonId: 1, presentStudentIds: [1, 3], observation: 'Introdução parte 1' },
-  { id: 2, classId: 1, date: '2023-10-14', lessonId: 1, presentStudentIds: [1], observation: 'Introdução parte 2 - Peter ausente' },
-  { id: 3, classId: 1, date: '2023-10-21', lessonId: 1, presentStudentIds: [1, 3], observation: 'Introdução parte 3 - Conclusão' },
-  
-  // Turma 102 finished Lesson 1 in 1 session
-  { id: 4, classId: 2, date: '2023-10-02', lessonId: 1, presentStudentIds: [2, 4], observation: 'Turma com ritmo rápido.' },
-];
+// Sessions are loaded from the API via HTTP; mock data removed.
 
 @Injectable({
   providedIn: 'root',
 })
 export class AttendanceService {
+  private http = inject(HttpClient);
+  private baseUrl = 'http://localhost:3000';
   // We now store Sessions, which contain attendance AND content info
-  sessions = signal<ClassSession[]>(MOCK_SESSIONS);
+  sessions = signal<ClassSession[]>([]);
 
-  registerSession(data: Omit<ClassSession, 'id'>) {
-    this.sessions.update(sessions => {
-      const newId = sessions.length > 0 ? Math.max(...sessions.map(s => s.id)) + 1 : 1;
-      return [...sessions, { id: newId, ...data }];
-    });
+  constructor() {
+    this.loadSessions();
+  }
+
+  async loadSessions() {
+    try {
+      const list = await this.http.get<ClassSession[]>(`${this.baseUrl}/class-sessions`).toPromise();
+      this.sessions.set(list || []);
+    } catch (error) {
+      console.error('Failed to load sessions', error);
+      this.sessions.set([]);
+    }
+  }
+
+  async registerSession(data: Omit<ClassSession, 'id'>) {
+    try {
+      const created = await this.http.post<ClassSession>(`${this.baseUrl}/class-sessions`, data).toPromise();
+      this.sessions.update(s => [...s, created]);
+      return created;
+    } catch (error) {
+      console.error('Failed to create session', error);
+      throw error;
+    }
   }
 
   getSessionsByClass(classId: number): ClassSession[] {
@@ -34,13 +47,17 @@ export class AttendanceService {
     return this.sessions().filter(s => s.classId === classId && s.lessonId === lessonId);
   }
 
-  removeStudentFromAttendance(studentId: number) {
-    this.sessions.update(sessions => 
-      sessions.map(s => ({
-          ...s,
-          presentStudentIds: s.presentStudentIds.filter(id => id !== studentId)
-      }))
-    );
+  async removeStudentFromAttendance(studentId: number) {
+    this.sessions.update(sessions => sessions.map(s => ({ ...s, presentStudentIds: s.presentStudentIds.filter(id => id !== studentId) })));
+    try {
+      // Persist changes to server: update each modified session
+      const modified = this.sessions().filter(s => !s.presentStudentIds.includes(studentId));
+      for (const ms of modified) {
+        await this.http.put(`${this.baseUrl}/class-sessions/${ms.id}`, ms).toPromise();
+      }
+    } catch (error) {
+      console.error('Failed to persist session updates', error);
+    }
   }
 
   // Calculate frequency based on ALL sessions given to that class
