@@ -1,0 +1,70 @@
+
+<div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" (click)="onClose()">
+  <div class="bg-white dark:bg-[#2d2d2d] rounded-lg shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <header class="p-4 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#1e1e1e] rounded-t-lg">
+      <h2 class="text-xl font-bold text-gray-800 dark:text-white">{{ moduleToEdit() ? 'Editar Módulo' : 'Adicionar Módulo' }}</h2>
+    </header>
+
+    <!-- Modal Body -->
+    <main class="p-6 flex flex-col gap-6">
+        <div>
+            <label for="modTitle" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Título do Módulo</label>
+            <input 
+                id="modTitle"
+                type="text" 
+                class="w-full bg-gray-50 dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                placeholder="Ex: Introdução ao HTML"
+                [value]="title()"
+                (input)="onTitleChange($event)"
+            />
+        </div>
+        <div>
+            <label for="modDesc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descrição</label>
+            <textarea 
+                id="modDesc"
+                class="w-full bg-gray-50 dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500 min-h-[80px]"
+                placeholder="Detalhes sobre o conteúdo..."
+                [value]="description()"
+                (input)="onDescriptionChange($event)"
+            ></textarea>
+        </div>
+        <div class="grid grid-cols-2 gap-4">
+            <div>
+                <label for="modDuration" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Carga Horária</label>
+                <input 
+                    id="modDuration"
+                    type="text" 
+                    class="w-full bg-gray-50 dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    placeholder="Ex: 4h 30m"
+                    [value]="duration()"
+                    (input)="onDurationChange($event)"
+                />
+            </div>
+            <div>
+                <label for="modStatus" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Status</label>
+                <select
+                    id="modStatus"
+                    class="w-full bg-gray-50 dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-200 focus:outline-none focus:ring-2 focus:ring-yellow-500"
+                    [value]="status()"
+                    (change)="onStatusChange($event)"
+                >
+                    <option value="upcoming">Aguardando</option>
+                    <option value="in-progress">Em Andamento</option>
+                    <option value="completed">Concluído</option>
+                </select>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Footer -->
+    <footer class="p-4 flex justify-end gap-3 bg-gray-50 dark:bg-[#252526] rounded-b-lg border-t border-gray-200 dark:border-gray-600">
+      <button (click)="onClose()" class="px-4 py-2 rounded-md text-sm font-semibold text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+        Cancelar
+      </button>
+      <button (click)="onSave()" [disabled]="!title().trim()" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-yellow-600 hover:bg-yellow-700 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors shadow-sm">
+        {{ moduleToEdit() ? 'Salvar Alterações' : 'Adicionar' }}
+      </button>
+    </footer>
+  </div>
+</div>
