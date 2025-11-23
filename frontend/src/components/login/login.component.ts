@@ -15,11 +15,8 @@ export class LoginComponent {
 
   email = signal('');
   password = signal('');
-  selectedRole = signal<'student' | 'teacher'>('student');
   errorMessage = signal('');
-
-  // Mock hints for demo purposes
-  availableStudents = inject(AuthService)['studentService'].students;
+  isLoading = signal(false);
 
   onEmailChange(event: Event) {
     this.email.set((event.target as HTMLInputElement).value);
@@ -31,36 +28,24 @@ export class LoginComponent {
     this.errorMessage.set('');
   }
 
-  setRole(role: 'student' | 'teacher') {
-    this.selectedRole.set(role);
-    this.errorMessage.set('');
-    this.password.set(''); // Clear password on role switch
-    
-    // Clear email or pre-fill for convenience during demo
-    if (role === 'teacher') {
-        this.email.set('professor@coderoom.com');
-        this.password.set('admin123'); // Pre-fill for demo convenience
-    } else {
-        this.email.set('');
-    }
-  }
-
-  login() {
+  async login() {
     if (!this.email().trim() || !this.password().trim()) {
       this.errorMessage.set('Por favor, preencha e-mail e senha.');
       return;
     }
 
-    const success = this.authService.login(this.email(), this.password(), this.selectedRole());
-    
-    if (!success) {
-      this.errorMessage.set('Credenciais inválidas. Verifique e-mail e senha.');
+    this.isLoading.set(true);
+    this.errorMessage.set('');
+
+    try {
+      const success = await this.authService.login(this.email(), this.password());
+      if (!success) {
+        this.errorMessage.set('Credenciais inválidas. Verifique e-mail e senha.');
+      }
+    } catch (error) {
+      this.errorMessage.set('Erro ao fazer login. Tente novamente.');
+    } finally {
+      this.isLoading.set(false);
     }
-  }
-  
-  // Helper to quick fill student for testing
-  fillStudent(email: string) {
-      this.email.set(email);
-      this.password.set('123'); // Default mock password
   }
 }

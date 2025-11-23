@@ -1,63 +1,67 @@
 
 import { Injectable, signal, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { User } from '../models/domain.models';
-import { StudentService } from './student.service';
+import { jwtDecode } from 'jwt-decode';
 
 @Injectable({
   providedIn: 'root',
 })
 export class AuthService {
-  private studentService = inject(StudentService);
+  private http = inject(HttpClient);
   
   // Current authenticated user state
   currentUser = signal<User | null>(null);
 
-  login(email: string, password: string, role: 'student' | 'teacher'): boolean {
-    if (role === 'teacher') {
-      // Mock Teacher Credentials
-      // In a real app, this would be a backend call
-      const validEmails = ['professor@coderoom.com', 'admin@coderoom.com'];
-      if (validEmails.includes(email) && password === 'admin123') {
+  constructor() {
+    // Check for existing token on init
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      try {
+        const decoded: any = jwtDecode(token);
         this.currentUser.set({
-          id: 999,
-          name: 'Professor Admin',
-          email: email,
-          role: 'teacher'
+          id: decoded.sub,
+          name: decoded.name || 'User', // Assuming name is in token, adjust as needed
+          email: decoded.email,
+          role: decoded.role
+        });
+      } catch (error) {
+        console.error('Invalid token', error);
+        localStorage.removeItem('access_token');
+      }
+    }
+  }
+
+  async login(email: string, password: string): Promise<boolean> {
+    try {
+      const response: any = await this.http.post('http://localhost:3000/auth/login', { email, password }).toPromise();
+      if (response && response.access_token) {
+        localStorage.setItem('access_token', response.access_token);
+        const decoded: any = jwtDecode(response.access_token);
+        this.currentUser.set({
+          id: decoded.sub,
+          name: decoded.name || 'User',
+          email: decoded.email,
+          role: decoded.role
         });
         return true;
       }
-    } else {
-      // Find student by email
-      const student = this.studentService.students().find(s => s.email.toLowerCase() === email.toLowerCase());
-      
-      // Check if student exists AND password matches
-      // For backward compatibility with existing mocks lacking passwords, we fallback to '123456' check logic if undefined
-      if (student) {
-          const studentPass = student.password || '123'; 
-          if (studentPass === password) {
-            this.currentUser.set({
-              id: student.id,
-              name: student.name,
-              email: student.email,
-              role: 'student'
-            });
-            return true;
-          }
-      }
+    } catch (error) {
+      console.error('Login failed', error);
     }
-    
     return false;
   }
 
   logout() {
+    localStorage.removeItem('access_token');
     this.currentUser.set(null);
   }
 
-  isLoggedIn() {
+  isLoggedIn(): boolean {
     return this.currentUser() !== null;
   }
 
   getUserRole(): 'student' | 'teacher' | null {
-    return this.currentUser()?.role ?? null;
+    return this.currentUser()?.role || null;
   }
 }
