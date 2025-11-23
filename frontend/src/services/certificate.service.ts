@@ -1,28 +1,43 @@
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { Certificate } from '../models/domain.models';
+import { HttpClient } from '@angular/common/http';
 
 @Injectable({
   providedIn: 'root',
 })
 export class CertificateService {
+  private http = inject(HttpClient);
+  private baseUrl = 'http://localhost:3000';
   certificates = signal<Certificate[]>([]);
 
-  issueCertificate(studentId: number, classId: number): Certificate {
-    // Check if already exists
+  constructor() {
+    this.loadCertificates();
+  }
+
+  async loadCertificates() {
+    try {
+      const list = await this.http.get<Certificate[]>(`${this.baseUrl}/certificates`).toPromise();
+      this.certificates.set(list || []);
+    } catch (error) {
+      console.error('Failed to load certificates', error);
+      this.certificates.set([]);
+    }
+  }
+
+  async issueCertificate(studentId: number, classId: number): Promise<Certificate> {
+    // Create certificate via API
     const existing = this.certificates().find(c => c.studentId === studentId && c.classId === classId);
     if (existing) return existing;
-
-    const newCert: Certificate = {
-      id: crypto.randomUUID(),
-      studentId,
-      classId,
-      issueDate: new Date().toISOString(),
-      validationCode: Math.random().toString(36).substring(2, 10).toUpperCase()
-    };
-
-    this.certificates.update(certs => [...certs, newCert]);
-    return newCert;
+    try {
+      const payload = { studentId, classId };
+      const created = await this.http.post<Certificate>(`${this.baseUrl}/certificates`, payload).toPromise();
+      this.certificates.update(certs => [...certs, created]);
+      return created;
+    } catch (error) {
+      console.error('Failed to issue certificate', error);
+      throw error;
+    }
   }
 
   getCertificate(studentId: number, classId: number): Certificate | undefined {
