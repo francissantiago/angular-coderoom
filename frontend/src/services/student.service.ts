@@ -1,33 +1,62 @@
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
+import { HttpClient } from '@angular/common/http';
 import { Student } from '../models/domain.models';
 
-const MOCK_STUDENTS: Student[] = [
-  { id: 1, name: 'Alex Doe', email: 'alex.doe@school.edu', enrollmentNumber: '2023-001', birthDate: '2008-05-15', password: '123' },
-  { id: 2, name: 'Jane Smith', email: 'jane.smith@school.edu', enrollmentNumber: '2023-002', birthDate: '2008-08-22', password: '123' },
-  { id: 3, name: 'Peter Jones', email: 'peter.jones@school.edu', enrollmentNumber: '2023-003', birthDate: '2007-11-30', password: '123' },
-  { id: 4, name: 'Maria Garcia', email: 'maria.garcia@school.edu', enrollmentNumber: '2023-004', birthDate: '2009-01-10', password: '123' },
-];
+// Student data is loaded from the API via HTTP. Remove mocked data.
 
 @Injectable({
   providedIn: 'root',
 })
 export class StudentService {
-  students = signal<Student[]>(MOCK_STUDENTS);
+  private http = inject(HttpClient);
+  students = signal<Student[]>([]);
+  private baseUrl = 'http://localhost:3000';
 
-  addStudent(data: { name: string; email: string; enrollmentNumber: string; birthDate: string }) {
-    this.students.update(students => {
-      const newId = students.length > 0 ? Math.max(...students.map(s => s.id)) + 1 : 1;
-      // Set default password for new students
-      return [...students, { id: newId, ...data, password: '123' }];
-    });
+  constructor() {
+    // Load students on service init
+    this.loadStudents();
   }
 
-  removeStudent(studentId: number) {
-    this.students.update(students => students.filter(s => s.id !== studentId));
+  async loadStudents() {
+    try {
+      const list = await this.http.get<Student[]>(`${this.baseUrl}/students`).toPromise();
+      this.students.set(list || []);
+    } catch (error) {
+      console.error('Failed to load students', error);
+      this.students.set([]);
+    }
   }
 
-  getStudentById(id: number): Student | undefined {
-    return this.students().find(s => s.id === id);
+  async addStudent(data: { name: string; email: string; enrollmentNumber: string; birthDate: string }) {
+    try {
+      const created = await this.http.post<Student>(`${this.baseUrl}/students`, data).toPromise();
+      this.students.update(list => [...list, created]);
+      return created;
+    } catch (error) {
+      console.error('Failed to create student', error);
+      throw error;
+    }
+  }
+
+  async removeStudent(studentId: number) {
+    try {
+      await this.http.delete(`${this.baseUrl}/students/${studentId}`).toPromise();
+      this.students.update(list => list.filter(s => s.id !== studentId));
+      return true;
+    } catch (error) {
+      console.error('Failed to remove student', error);
+      return false;
+    }
+  }
+
+  async getStudentById(id: number): Promise<Student | null> {
+    try {
+      const student = await this.http.get<Student>(`${this.baseUrl}/students/${id}`).toPromise();
+      return student || null;
+    } catch (error) {
+      console.error('Failed to fetch student', error);
+      return null;
+    }
   }
 }
