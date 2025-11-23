@@ -132,8 +132,8 @@ export class AppComponent {
     this.showTeacherCode.update(v => !v);
   }
 
-  updateCode(language: 'html' | 'css' | 'js', content: string) {
-    this.codeService.updateStudentCode(language, content);
+  async updateCode(language: 'html' | 'css' | 'js', content: string) {
+    await this.codeService.updateStudentCode(language, content);
   }
 
   saveCode() {
@@ -148,7 +148,7 @@ export class AppComponent {
     if (!currentCode) return;
     const codeToFormat = currentCode[lang];
     const formattedCode = await this.codeService.formatCode(lang, codeToFormat);
-    this.codeService.updateStudentCode(lang, formattedCode);
+    await this.codeService.updateStudentCode(lang, formattedCode);
   }
 
   selectStudent(studentId: number | null) {
@@ -174,14 +174,14 @@ export class AppComponent {
     this.feedbackInput.set((event.target as HTMLTextAreaElement).value);
   }
 
-  submitGrade() {
+  async submitGrade() {
     const project = this.activeProject();
     const studentId = this.codeService.viewedStudentId();
     const grade = this.gradeInput();
     const feedback = this.feedbackInput();
 
     if (project && studentId && grade !== null) {
-      this.codeService.gradeStudentSubmission(project.id, studentId, grade, feedback);
+      await this.codeService.gradeStudentSubmission(project.id, studentId, grade, feedback);
       this.showSaveToast.set(true);
       setTimeout(() => this.showSaveToast.set(false), 3000);
     }
