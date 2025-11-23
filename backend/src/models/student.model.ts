@@ -1,19 +1,23 @@
-import { Table, Column, Model } from 'sequelize-typescript';
+import { Table, Column, Model, HasMany, DataType } from 'sequelize-typescript';
+import { Certificate } from './certificate.model';
 
 @Table({ tableName: 'students', timestamps: true })
 export class Student extends Model {
   @Column
-  name: string;
+  declare name: string;
 
   @Column({ unique: true })
-  email: string;
+  declare email: string;
 
-  @Column
-  enrollmentNumber: string;
+  @Column({ type: DataType.STRING, allowNull: true })
+  declare enrollmentNumber: string | null;
 
-  @Column
-  birthDate: string;
+  @Column({ type: DataType.STRING, allowNull: true })
+  declare birthDate: string | null;
 
-  @Column
-  password?: string;
+  @Column({ type: DataType.STRING, allowNull: true })
+  declare password?: string | null;
+
+  @HasMany(() => Certificate)
+  declare certificates: Certificate[];
 }

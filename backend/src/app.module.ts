@@ -4,6 +4,14 @@ import { AppService } from './app.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { AuthModule } from './auth/auth.module';
 import { StudentsModule } from './students/students.module';
+import { User } from './models/user.model';
+import { Student } from './models/student.model';
+import { Project } from './models/project.model';
+import { Lesson } from './models/lesson.model';
+import { ClassSession } from './models/class-session.model';
+import { ClassGroup } from './models/class-group.model';
+import { Certificate } from './models/certificate.model';
+import { SeederService } from './seed/seeder.service';
 
 @Module({
   imports: [
@@ -16,11 +24,13 @@ import { StudentsModule } from './students/students.module';
       database: 'coderoom_db',
       autoLoadModels: true,
       synchronize: true,
+      models: [User, Student, Project, Lesson, ClassSession, ClassGroup, Certificate],
     }),
+    SequelizeModule.forFeature([User]),
     AuthModule,
     StudentsModule,
   ],
   controllers: [AppController],
-  providers: [AppService],
+  providers: [AppService, SeederService],
 })
 export class AppModule {}
