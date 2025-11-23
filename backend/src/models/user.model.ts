@@ -1,12 +1,7 @@
-import { Table, Column, Model, PrimaryKey, AutoIncrement } from 'sequelize-typescript';
+import { Table, Column, Model } from 'sequelize-typescript';
 
 @Table({ tableName: 'users', timestamps: true })
 export class User extends Model {
-  @PrimaryKey
-  @AutoIncrement
-  @Column
-  id: number;
-
   @Column
   name: string;
 
