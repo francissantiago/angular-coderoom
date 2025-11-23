@@ -1,0 +1,44 @@
+
+<div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" (click)="onClose()">
+  <div class="bg-white dark:bg-[#2d2d2d] rounded-lg shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <header class="p-4 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#1e1e1e] rounded-t-lg">
+      <h2 class="text-xl font-bold text-gray-800 dark:text-white">{{ projectToEdit() ? 'Editar Projeto' : 'Criar Novo Projeto' }}</h2>
+    </header>
+
+    <!-- Modal Body -->
+    <main class="p-6 flex flex-col gap-6">
+        <div>
+            <label for="projectName" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome do Projeto</label>
+            <input 
+                id="projectName"
+                type="text" 
+                class="w-full bg-gray-50 dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                placeholder="Ex: Introdução ao CSS"
+                [value]="name()"
+                (input)="onNameChange($event)"
+            />
+        </div>
+        <div>
+            <label for="projectDesc" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Descrição</label>
+            <textarea 
+                id="projectDesc"
+                class="w-full bg-gray-50 dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded-md px-3 py-2 text-sm text-gray-900 dark:text-gray-200 placeholder-gray-500 dark:placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[120px]"
+                placeholder="Descreva o objetivo do projeto para os alunos..."
+                [value]="description()"
+                (input)="onDescriptionChange($event)"
+            ></textarea>
+        </div>
+    </main>
+
+    <!-- Modal Footer -->
+    <footer class="p-4 flex justify-end gap-3 bg-gray-50 dark:bg-[#252526] rounded-b-lg border-t border-gray-200 dark:border-gray-600">
+      <button (click)="onClose()" class="px-4 py-2 rounded-md text-sm font-semibold text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+        Cancelar
+      </button>
+      <button (click)="onSave()" [disabled]="!name().trim()" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:bg-gray-400 dark:disabled:bg-gray-500 disabled:cursor-not-allowed transition-colors shadow-sm">
+        {{ projectToEdit() ? 'Salvar Alterações' : 'Criar Projeto' }}
+      </button>
+    </footer>
+  </div>
+</div>
