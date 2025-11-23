@@ -1,0 +1,61 @@
+
+<div class="fixed inset-0 bg-black/60 z-40 flex items-center justify-center p-4" (click)="onClose()">
+  <div class="bg-white dark:bg-[#2d2d2d] rounded-lg shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <header class="p-4 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#252526] rounded-t-lg">
+      <h2 class="text-xl font-bold text-gray-800 dark:text-white">Atribuir Alunos</h2>
+      <p class="text-sm text-gray-500 dark:text-gray-400">Projeto: <span class="font-semibold text-blue-600 dark:text-cyan-400">{{ project().name }}</span></p>
+      @if(projectClass(); as pc) {
+          <p class="text-xs text-gray-500 mt-1">Turma: {{ pc.name }}</p>
+      }
+    </header>
+
+    <!-- Student List -->
+    <main class="p-6 max-h-[60vh] overflow-y-auto">
+      
+      <h3 class="text-base font-semibold text-gray-700 dark:text-gray-200 mb-3">Alunos da Turma</h3>
+      
+      @if(eligibleStudents().length > 0) {
+        <div class="pb-4 border-b border-gray-200 dark:border-gray-600 mb-4">
+          <label class="flex items-center gap-3 p-3 rounded-md bg-gray-100 dark:bg-[#252526] hover:bg-gray-200 dark:hover:bg-[#3c3c3c] transition-colors cursor-pointer">
+            <input 
+              type="checkbox"
+              class="h-5 w-5 rounded bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-500 text-purple-500 focus:ring-purple-600"
+              [checked]="areAllSelected()"
+              [indeterminate]="someSelected()"
+              (change)="toggleSelectAll($event)"
+            />
+            <span class="font-semibold text-gray-700 dark:text-gray-100">Selecionar Todos da Turma</span>
+          </label>
+        </div>
+        <div class="flex flex-col gap-3">
+          @for(student of eligibleStudents(); track student.id) {
+            <label class="flex items-center gap-3 p-3 rounded-md bg-gray-50 dark:bg-[#3c3c3c] hover:bg-gray-100 dark:hover:bg-[#4a4a4a] transition-colors cursor-pointer border border-gray-200 dark:border-transparent">
+              <input 
+                type="checkbox"
+                class="h-5 w-5 rounded bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-500 text-purple-500 focus:ring-purple-600"
+                [checked]="selectedStudentIds().has(student.id)"
+                (change)="onCheckboxChange(student.id, $event)"
+              />
+              <span class="text-gray-700 dark:text-gray-200">{{ student.name }}</span>
+            </label>
+          }
+        </div>
+      } @else {
+        <div class="text-center py-6 text-gray-500 italic">
+            Não há alunos cadastrados nesta turma.
+        </div>
+      }
+    </main>
+
+    <!-- Modal Footer -->
+    <footer class="p-4 flex justify-end gap-3 bg-gray-50 dark:bg-[#252526] rounded-b-lg border-t border-gray-200 dark:border-gray-600">
+      <button (click)="onClose()" class="px-4 py-2 rounded-md text-sm font-semibold text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+        Cancelar
+      </button>
+      <button (click)="onSave()" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-purple-600 hover:bg-purple-700 transition-colors shadow-sm">
+        Salvar Alterações
+      </button>
+    </footer>
+  </div>
+</div>
