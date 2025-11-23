@@ -1,107 +1,106 @@
 
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, inject } from '@angular/core';
 import { ClassGroup, Lesson } from '../models/domain.models';
+import { HttpClient } from '@angular/common/http';
 
-const MOCK_CLASS_GROUPS: ClassGroup[] = [
-  { 
-    id: 1, 
-    name: 'Turma 101 - Fundamentos Web', 
-    description: 'Introdução ao desenvolvimento web.',
-    schedule: 'Sábados 15:00 - 16:00',
-    studentIds: [1, 3],
-    lessons: [
-      { id: 1, title: 'Aula 01 - Introdução HTML', description: 'Tags, atributos e estrutura.', standardDuration: 1 },
-      { id: 2, title: 'Aula 02 - Básico de CSS', description: 'Seletores e Cores.', standardDuration: 1 },
-      { id: 3, title: 'Aula 03 - Box Model', description: 'Margem, preenchimento, borda.', standardDuration: 1 }
-    ]
-  },
-  { 
-    id: 2, 
-    name: 'Turma 102 - CSS Avançado', 
-    description: 'Técnicas avançadas de estilização.',
-    schedule: 'Segundas 12:00 - 13:00',
-    studentIds: [2, 4],
-    lessons: [
-      { id: 1, title: 'Aula 01 - Flexbox', description: 'Mecânicas de Layout.', standardDuration: 1 },
-      { id: 2, title: 'Aula 02 - Grid', description: 'Layouts 2D.', standardDuration: 1 }
-    ]
-  },
-];
+// Class groups are loaded from the API via HTTP; mock data removed.
 
 @Injectable({
   providedIn: 'root',
 })
 export class ClassService {
-  classGroups = signal<ClassGroup[]>(MOCK_CLASS_GROUPS);
+  private http = inject(HttpClient);
+  private baseUrl = 'http://localhost:3000';
+  classGroups = signal<ClassGroup[]>([]);
 
-  addNewClassGroup(name: string, description: string, schedule: string, studentIds: number[]) {
-    this.classGroups.update(groups => {
-      const newId = groups.length > 0 ? Math.max(...groups.map(g => g.id)) + 1 : 1;
-      const newGroup: ClassGroup = { 
-        id: newId, 
-        name, 
-        description,
-        schedule,
-        studentIds, 
-        lessons: [] 
-      };
-      return [...groups, newGroup];
-    });
+  constructor() {
+    this.loadClassGroups();
   }
 
-  updateClassGroup(classId: number, name: string, description: string, schedule: string, studentIds: number[]) {
-    this.classGroups.update(groups => 
-      groups.map(g => g.id === classId ? { ...g, name, description, schedule, studentIds } : g)
-    );
+  async loadClassGroups() {
+    try {
+      const list = await this.http.get<ClassGroup[]>(`${this.baseUrl}/class-groups`).toPromise();
+      this.classGroups.set(list || []);
+    } catch (error) {
+      console.error('Failed to load class groups', error);
+      this.classGroups.set([]);
+    }
   }
 
-  removeStudentFromClasses(studentId: number) {
+  async addNewClassGroup(name: string, description: string, schedule: string, studentIds: number[]) {
+    try {
+      const payload = { name, description, schedule, studentIds };
+      const created = await this.http.post<ClassGroup>(`${this.baseUrl}/class-groups`, payload).toPromise();
+      this.classGroups.update(list => [...list, created]);
+      return created;
+    } catch (error) {
+      console.error('Failed to create class group', error);
+      throw error;
+    }
+  }
+
+  async updateClassGroup(classId: number, name: string, description: string, schedule: string, studentIds: number[]) {
+    const group = this.classGroups().find(g => g.id === classId);
+    if (!group) return null;
+    const updated = { ...group, name, description, schedule, studentIds } as ClassGroup;
+    try {
+      const resp = await this.http.put<ClassGroup>(`${this.baseUrl}/class-groups/${classId}`, updated).toPromise();
+      this.classGroups.update(groups => groups.map(g => g.id === classId ? resp : g));
+      return resp;
+    } catch (error) {
+      console.error('Failed to update class group', error);
+      return null;
+    }
+  }
+
+  async removeStudentFromClasses(studentId: number) {
+    // Update locally and attempt to persist
     this.classGroups.update(groups =>
-      groups.map(g => ({
-        ...g,
-        studentIds: g.studentIds.filter(id => id !== studentId)
-      }))
+      groups.map(g => ({ ...g, studentIds: g.studentIds.filter(id => id !== studentId) }))
     );
+    try {
+      // Persist all affected groups
+      const affected = this.classGroups().filter(g => g.studentIds.includes(studentId) === false);
+      for (const g of affected) {
+        await this.http.put(`${this.baseUrl}/class-groups/${g.id}`, g).toPromise();
+      }
+    } catch (error) {
+      console.error('Failed to persist class group updates on student removal', error);
+    }
   }
 
   addLessonToClass(classId: number, lessonData: Omit<Lesson, 'id'>) {
-    this.classGroups.update(groups => 
-      groups.map(g => {
-        if (g.id === classId) {
-          const nextId = g.lessons.length > 0 ? Math.max(...g.lessons.map(m => m.id)) + 1 : 1;
-          const newLesson: Lesson = { ...lessonData, id: nextId };
-          return { ...g, lessons: [...g.lessons, newLesson] };
-        }
-        return g;
-      })
-    );
+    this.classGroups.update(groups => groups.map(g => {
+      if (g.id === classId) {
+        const nextId = g.lessons.length > 0 ? Math.max(...g.lessons.map(m => m.id)) + 1 : 1;
+        const newLesson: Lesson = { ...lessonData, id: nextId };
+        const updated = { ...g, lessons: [...g.lessons, newLesson] };
+        this.http.put(`${this.baseUrl}/class-groups/${classId}`, updated).toPromise().catch(err => console.error('Failed to persist lesson add', err));
+        return updated;
+      }
+      return g;
+    }));
   }
 
   updateLessonInClass(classId: number, lesson: Lesson) {
-    this.classGroups.update(groups => 
-        groups.map(g => {
-          if (g.id === classId) {
-            return { 
-              ...g, 
-              lessons: g.lessons.map(m => m.id === lesson.id ? lesson : m) 
-            };
-          }
-          return g;
-        })
-      );
+    this.classGroups.update(groups => groups.map(g => {
+      if (g.id === classId) {
+        const updated = { ...g, lessons: g.lessons.map(m => m.id === lesson.id ? lesson : m) };
+        this.http.put(`${this.baseUrl}/class-groups/${classId}`, updated).toPromise().catch(err => console.error('Failed to persist lesson update', err));
+        return updated;
+      }
+      return g;
+    }));
   }
 
   removeLessonFromClass(classId: number, lessonId: number) {
-    this.classGroups.update(groups => 
-        groups.map(g => {
-          if (g.id === classId) {
-            return { 
-              ...g, 
-              lessons: g.lessons.filter(m => m.id !== lessonId) 
-            };
-          }
-          return g;
-        })
-      );
+    this.classGroups.update(groups => groups.map(g => {
+      if (g.id === classId) {
+        const updated = { ...g, lessons: g.lessons.filter(m => m.id !== lessonId) };
+        this.http.put(`${this.baseUrl}/class-groups/${classId}`, updated).toPromise().catch(err => console.error('Failed to persist lesson delete', err));
+        return updated;
+      }
+      return g;
+    }));
   }
 }
