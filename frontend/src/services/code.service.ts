@@ -156,26 +156,27 @@ export class CodeService {
   }
 
   getStudentById(studentId: number): Student | undefined {
-    return this.studentService.getStudentById(studentId);
+    // Prefer cached value in StudentService's signal
+    return this.studentService.students().find(s => s.id === studentId);
   }
 
   // --- Project Facade Methods ---
-  createNewProject(classId: number, name: string, description: string) {
-    this.projectService.createNewProject(classId, name, description);
+  async createNewProject(classId: number, name: string, description: string) {
+    await this.projectService.createNewProject(classId, name, description);
   }
 
-  updateProjectDetails(id: number, name: string, description: string) {
-    this.projectService.updateProjectDetails(id, name, description);
+  async updateProjectDetails(id: number, name: string, description: string) {
+    await this.projectService.updateProjectDetails(id, name, description);
   }
   
-  updateStudentCode(language: 'html' | 'css' | 'js', content: string) {
+  async updateStudentCode(language: 'html' | 'css' | 'js', content: string) {
     const projectId = this.activeProjectId();
     if (!projectId) return;
-    this.projectService.updateStudentCode(projectId, this.currentStudentId, language, content);
+    await this.projectService.updateStudentCode(projectId, this.currentStudentId, language, content);
   }
 
-  updateProjectAssignments(projectId: number, assignedStudentIds: number[]) {
-    this.projectService.updateProjectAssignments(projectId, assignedStudentIds);
+  async updateProjectAssignments(projectId: number, assignedStudentIds: number[]) {
+    await this.projectService.updateProjectAssignments(projectId, assignedStudentIds);
   }
 
   saveCode() {
@@ -184,47 +185,47 @@ export class CodeService {
     this.projectService.saveCodeTimestamp(projectId, this.currentStudentId);
   }
 
-  gradeStudentSubmission(projectId: number, studentId: number, grade: number, feedback: string) {
-    this.projectService.gradeStudentSubmission(projectId, studentId, grade, feedback);
+  async gradeStudentSubmission(projectId: number, studentId: number, grade: number, feedback: string) {
+    await this.projectService.gradeStudentSubmission(projectId, studentId, grade, feedback);
   }
 
   // --- Class Facade Methods ---
-  addNewClassGroup(name: string, description: string, schedule: string, studentIds: number[]) {
-    this.classService.addNewClassGroup(name, description, schedule, studentIds);
+  async addNewClassGroup(name: string, description: string, schedule: string, studentIds: number[]) {
+    await this.classService.addNewClassGroup(name, description, schedule, studentIds);
   }
 
-  updateClassGroup(classId: number, name: string, description: string, schedule: string, studentIds: number[]) {
-    this.classService.updateClassGroup(classId, name, description, schedule, studentIds);
+  async updateClassGroup(classId: number, name: string, description: string, schedule: string, studentIds: number[]) {
+    await this.classService.updateClassGroup(classId, name, description, schedule, studentIds);
   }
 
-  addLessonToClass(classId: number, lessonData: Omit<Lesson, 'id'>) {
-    this.classService.addLessonToClass(classId, lessonData);
+  async addLessonToClass(classId: number, lessonData: Omit<Lesson, 'id'>) {
+    await this.classService.addLessonToClass(classId, lessonData);
   }
 
-  updateLessonInClass(classId: number, lesson: Lesson) {
-    this.classService.updateLessonInClass(classId, lesson);
+  async updateLessonInClass(classId: number, lesson: Lesson) {
+    await this.classService.updateLessonInClass(classId, lesson);
   }
 
-  removeLessonFromClass(classId: number, lessonId: number) {
-    this.classService.removeLessonFromClass(classId, lessonId);
+  async removeLessonFromClass(classId: number, lessonId: number) {
+    await this.classService.removeLessonFromClass(classId, lessonId);
   }
 
   // --- Student Facade Methods ---
-  addStudent(data: { name: string; email: string; enrollmentNumber: string; birthDate: string }) {
-    this.studentService.addStudent(data);
+  async addStudent(data: { name: string; email: string; enrollmentNumber: string; birthDate: string }) {
+    await this.studentService.addStudent(data);
   }
 
-  removeStudent(studentId: number) {
+  async removeStudent(studentId: number) {
     // Orchestrate deletion across all domains
-    this.studentService.removeStudent(studentId);
-    this.classService.removeStudentFromClasses(studentId);
-    this.projectService.removeStudentSubmissions(studentId);
-    this.attendanceService.removeStudentFromAttendance(studentId);
+    await this.studentService.removeStudent(studentId);
+    await this.classService.removeStudentFromClasses(studentId);
+    await this.projectService.removeStudentSubmissions(studentId);
+    await this.attendanceService.removeStudentFromAttendance(studentId);
   }
 
   // --- Session / Attendance Facade Methods ---
-  registerClassSession(data: Omit<ClassSession, 'id'>) {
-    this.attendanceService.registerSession(data);
+  async registerClassSession(data: Omit<ClassSession, 'id'>) {
+    await this.attendanceService.registerSession(data);
   }
 
   getAttendanceRecord(classId: number, date: string): ClassSession | undefined {
@@ -257,8 +258,8 @@ export class CodeService {
   }
 
   // --- Certificate Facade Methods ---
-  issueCertificate(studentId: number, classId: number): Certificate {
-    return this.certificateService.issueCertificate(studentId, classId);
+  async issueCertificate(studentId: number, classId: number): Promise<Certificate> {
+    return await this.certificateService.issueCertificate(studentId, classId);
   }
 
   getCertificate(studentId: number, classId: number): Certificate | undefined {
