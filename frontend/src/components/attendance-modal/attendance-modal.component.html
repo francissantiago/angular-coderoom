@@ -1,0 +1,75 @@
+
+<div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" (click)="onClose()">
+  <div class="bg-white dark:bg-[#2d2d2d] rounded-lg shadow-xl w-full max-w-md border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+    <!-- Modal Header -->
+    <header class="p-4 border-b border-gray-200 dark:border-gray-600 flex justify-between items-center bg-gray-50 dark:bg-[#1e1e1e] rounded-t-lg">
+      <div>
+          <h2 class="text-xl font-bold text-gray-800 dark:text-white">Realizar Chamada</h2>
+          <p class="text-sm text-gray-500 dark:text-gray-400">{{ classGroup().name }}</p>
+      </div>
+      <input 
+        type="date"
+        [value]="selectedDate()"
+        (input)="onDateChange($event)"
+        class="bg-white dark:bg-[#3c3c3c] border border-gray-300 dark:border-gray-600 rounded px-3 py-1 text-gray-900 dark:text-white text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+      />
+    </header>
+
+    <!-- Modal Body -->
+    <main class="p-6 max-h-[60vh] overflow-y-auto">
+        @if(students().length > 0) {
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
+                <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Lista de Presença</span>
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <span class="text-xs text-gray-500">Marcar Todos</span>
+                    <input 
+                        type="checkbox" 
+                        class="h-4 w-4 rounded bg-gray-200 dark:bg-gray-700 border-gray-300 dark:border-gray-500 text-blue-500 focus:ring-blue-600"
+                        [checked]="allSelected"
+                        [indeterminate]="someSelected"
+                        (change)="toggleSelectAll($event)"
+                    />
+                </label>
+            </div>
+            <div class="flex flex-col gap-3">
+                @for(student of students(); track student.id) {
+                    <div class="flex items-center justify-between p-3 rounded bg-gray-50 dark:bg-[#3c3c3c] hover:bg-gray-100 dark:hover:bg-[#454545] transition-colors border border-gray-200 dark:border-transparent">
+                        <div>
+                            <div class="text-gray-800 dark:text-gray-200 font-medium">{{ student.name }}</div>
+                            <div class="text-xs text-gray-500">Mat: {{ student.enrollmentNumber }}</div>
+                        </div>
+                        <button 
+                            (click)="togglePresence(student.id)"
+                            class="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none"
+                            [class]="presenceMap()[student.id] ? 'bg-green-600' : 'bg-gray-300 dark:bg-gray-600'"
+                            role="switch"
+                            [attr.aria-checked]="presenceMap()[student.id]"
+                        >
+                            <span class="sr-only">Presença</span>
+                            <span
+                                aria-hidden="true"
+                                class="pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out"
+                                [class]="presenceMap()[student.id] ? 'translate-x-5' : 'translate-x-0'"
+                            ></span>
+                        </button>
+                    </div>
+                }
+            </div>
+        } @else {
+            <div class="text-center py-8 text-gray-500 italic">
+                Não há alunos nesta turma para realizar chamada.
+            </div>
+        }
+    </main>
+
+    <!-- Modal Footer -->
+    <footer class="p-4 flex justify-end gap-3 bg-gray-50 dark:bg-[#252526] rounded-b-lg border-t border-gray-200 dark:border-gray-600">
+      <button (click)="onClose()" class="px-4 py-2 rounded-md text-sm font-semibold text-gray-600 dark:text-gray-300 bg-transparent hover:bg-gray-200 dark:hover:bg-gray-600 transition-colors">
+        Cancelar
+      </button>
+      <button (click)="onSave()" class="px-4 py-2 rounded-md text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 transition-colors shadow-sm">
+        Salvar Chamada
+      </button>
+    </footer>
+  </div>
+</div>
