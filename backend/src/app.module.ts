@@ -4,6 +4,11 @@ import { AppService } from './app.service';
 import { SequelizeModule } from '@nestjs/sequelize';
 import { AuthModule } from './auth/auth.module';
 import { StudentsModule } from './students/students.module';
+import { ClassGroupModule } from './class-group/class-group.module';
+import { ProjectModule } from './project/project.module';
+import { LessonModule } from './lesson/lesson.module';
+import { ClassSessionModule } from './class-session/class-session.module';
+import { CertificateModule } from './certificate/certificate.module';
 import { User } from './models/user.model';
 import { Student } from './models/student.model';
 import { Project } from './models/project.model';
@@ -29,6 +34,11 @@ import { SeederService } from './seed/seeder.service';
     SequelizeModule.forFeature([User]),
     AuthModule,
     StudentsModule,
+    ClassGroupModule,
+    ProjectModule,
+    LessonModule,
+    ClassSessionModule,
+    CertificateModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],
