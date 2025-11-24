@@ -5,6 +5,7 @@ import { User } from '../models/domain.models';
 import { AuthManager } from './auth-manager.service';
 import { environment } from '../../environments/environment';
 import { jwtDecode } from 'jwt-decode';
+import { Observable, of, catchError, map } from 'rxjs';
 
 @Injectable({
   providedIn: 'root',
@@ -35,25 +36,33 @@ export class AuthService {
     }
   }
 
-  async login(email: string, password: string): Promise<boolean> {
-    try {
-      const response: any = await this.http.post(`${environment.apiUrl}/auth/login`, { email, password }).toPromise();
-      if (response && response.access_token) {
-        localStorage.setItem('access_token', response.access_token);
-        this.authManager.token = response.access_token;
-        const decoded: any = jwtDecode(response.access_token);
-        this.currentUser.set({
-          id: decoded.sub,
-          name: decoded.name || 'User',
-          email: decoded.email,
-          role: decoded.role
-        });
-        return true;
-      }
-    } catch (error) {
-      console.error('Login failed', error);
-    }
-    return false;
+  login(email: string, password: string): Observable<boolean> {
+    return this.http.post<any>(`${environment.apiUrl}/auth/login`, { email, password }).pipe(
+      map((response) => {
+        if (response && response.access_token) {
+          try {
+            localStorage.setItem('access_token', response.access_token);
+            this.authManager.token = response.access_token;
+            const decoded: any = jwtDecode(response.access_token);
+            this.currentUser.set({
+              id: decoded.sub,
+              name: decoded.name || 'User',
+              email: decoded.email,
+              role: decoded.role,
+            });
+            return true;
+          } catch (e) {
+            console.error('Login decode failed', e);
+            return false;
+          }
+        }
+        return false;
+      }),
+      catchError((err) => {
+        console.error('Login failed', err);
+        return of(false);
+      })
+    );
   }
 
   logout() {

@@ -1,6 +1,6 @@
 
 import { Injectable, signal, computed, inject } from '@angular/core';
-import { forkJoin } from 'rxjs';
+import { forkJoin, from, Observable, of, catchError } from 'rxjs';
 import { CodeState, Project, Student, ClassGroup, ClassSession, Lesson, StudentSubmission, Certificate } from '../models/domain.models';
 import { StudentService } from './student.service';
 import { ClassService } from './class.service';
@@ -275,36 +275,41 @@ export class CodeService {
   }
 
   // --- Editor Utility Methods ---
-  public async formatCode(language: 'html' | 'css' | 'js', code: string): Promise<string> {
+  public formatCode(language: 'html' | 'css' | 'js', code: string): Observable<string> {
+    let parser: string | undefined;
+    let plugins: any[] | undefined;
+
+    switch (language) {
+      case 'html':
+        parser = 'html';
+        plugins = [prettierPlugins.html];
+        break;
+      case 'css':
+        parser = 'css';
+        plugins = [prettierPlugins.postcss];
+        break;
+      case 'js':
+        parser = 'babel';
+        plugins = [prettierPlugins.babel, prettierPlugins.estree];
+        break;
+    }
+
     try {
-      let parser: string;
-      let plugins: any[];
-
-      switch (language) {
-        case 'html':
-          parser = 'html';
-          plugins = [prettierPlugins.html];
-          break;
-        case 'css':
-          parser = 'css';
-          plugins = [prettierPlugins.postcss];
-          break;
-        case 'js':
-          parser = 'babel';
-          plugins = [prettierPlugins.babel, prettierPlugins.estree];
-          break;
-      }
-
-      return await prettier.format(code, {
+      // prettier.format may return a Promise depending on the setup
+      const resultPromise = prettier.format(code, {
         parser,
         plugins,
         tabWidth: 2,
         semi: true,
         singleQuote: true,
       });
+      return from(resultPromise).pipe(catchError((e) => {
+        console.error(`Error formatting ${language}:`, e);
+        return of(code);
+      }));
     } catch (e) {
       console.error(`Error formatting ${language}:`, e);
-      return code;
+      return of(code);
     }
   }
 

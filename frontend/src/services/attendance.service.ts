@@ -3,7 +3,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { ClassSession } from '../models/domain.models';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, retry, timer, tap, catchError, of } from 'rxjs';
+import { Observable, retry, timer, tap, catchError, of, forkJoin } from 'rxjs';
 import { HandleErrors } from './handle-errors.service';
 import { AuthManager } from './auth-manager.service';
 
@@ -84,20 +84,17 @@ export class AttendanceService {
     const modified = this.sessions().filter((s) => !s.presentStudentIds.includes(studentId));
     if (modified.length === 0) return of(null);
 
-    // Persist changes (parallel) and return completion as Observable
-    return new Observable((subscriber) => {
-      Promise.all(
-        modified.map((ms) => this.http.put(`${this.apiUrl}/class-sessions/${ms.id}`, ms, { headers: this.headers }).toPromise())
-      )
-        .then((res) => {
-          subscriber.next(res);
-          subscriber.complete();
+    // Persist changes (parallel) and return completion as Observable using forkJoin
+    const observables = modified.map((ms) =>
+      this.http.put(`${this.apiUrl}/class-sessions/${ms.id}`, ms, { headers: this.headers }).pipe(
+        catchError((err) => {
+          console.error('Failed to persist session update for', ms.id, err);
+          return of(null);
         })
-        .catch((err) => {
-          console.error('Failed to persist session updates', err);
-          subscriber.error(err);
-        });
-    });
+      )
+    );
+
+    return forkJoin(observables).pipe(catchError(this.handlerErrors.handleError));
   }
 
   // Calculate frequency based on ALL sessions given to that class
