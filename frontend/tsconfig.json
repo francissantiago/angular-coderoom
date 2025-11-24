@@ -21,7 +21,7 @@
       "@services/*": ["services/*"],
       "@enums/*": ["enums/*"],
       "@utils/*": ["utils/*"],
-      "@environments/*": ["environments/*"]
+      "@environments/*": ["../environments/*"]
     }
   },
   "files": ["./index.tsx"],
