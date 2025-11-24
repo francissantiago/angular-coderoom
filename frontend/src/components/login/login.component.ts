@@ -1,7 +1,8 @@
 
-import { Component, ChangeDetectionStrategy, inject, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '@services/auth.service';
+import { Subject, takeUntil, finalize } from 'rxjs';
 
 @Component({
   selector: 'app-login',
@@ -12,6 +13,7 @@ import { AuthService } from '@services/auth.service';
 })
 export class LoginComponent {
   authService = inject(AuthService);
+  private destroyed = new Subject<void>();
 
   email = signal('');
   password = signal('');
@@ -28,7 +30,7 @@ export class LoginComponent {
     this.errorMessage.set('');
   }
 
-  async login() {
+  login() {
     if (!this.email().trim() || !this.password().trim()) {
       this.errorMessage.set('Por favor, preencha e-mail e senha.');
       return;
@@ -37,15 +39,23 @@ export class LoginComponent {
     this.isLoading.set(true);
     this.errorMessage.set('');
 
-    try {
-      const success = await this.authService.login(this.email(), this.password());
-      if (!success) {
-        this.errorMessage.set('Credenciais inválidas. Verifique e-mail e senha.');
-      }
-    } catch (error) {
-      this.errorMessage.set('Erro ao fazer login. Tente novamente.');
-    } finally {
-      this.isLoading.set(false);
-    }
+    this.authService
+      .login(this.email(), this.password())
+      .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
+      .subscribe({
+        next: (success) => {
+          if (!success) {
+            this.errorMessage.set('Credenciais inválidas. Verifique e-mail e senha.');
+          }
+        },
+        error: () => {
+          this.errorMessage.set('Erro ao fazer login. Tente novamente.');
+        },
+      });
+  }
+
+  ngOnDestroy() {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 }

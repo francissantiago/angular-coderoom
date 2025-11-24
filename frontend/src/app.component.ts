@@ -1,25 +1,32 @@
+import {
+  Component,
+  ChangeDetectionStrategy,
+  inject,
+  signal,
+  computed,
+  OnDestroy,
+} from "@angular/core";
+import { Subject, takeUntil } from "rxjs";
+import { CommonModule } from "@angular/common";
+import { EditorComponent } from "@components/editor/editor.component";
+import { PreviewComponent } from "@components/preview/preview.component";
+import { CodeService, Project, CodeState } from "./services/code.service";
+import { ChatComponent } from "@components/chat/chat.component";
+import { StudentDashboardComponent } from "@components/student-dashboard/student-dashboard.component";
+import { TeacherDashboardComponent } from "@components/teacher-dashboard/teacher-dashboard.component";
+import { AssignmentModalComponent } from "@components/assignment-modal/assignment-modal.component";
+import { ClassModalComponent } from "@components/class-modal/class-modal.component";
+import { AuthService } from "./services/auth.service";
+import { LoginComponent } from "@components/login/login.component";
+import { ThemeService } from "./services/theme.service";
+import { PaginationControlsComponent } from "@components/ui/pagination-controls.component";
 
-import { Component, ChangeDetectionStrategy, inject, signal, computed } from '@angular/core';
-import { CommonModule } from '@angular/common';
-import { EditorComponent } from '@components/editor/editor.component';
-import { PreviewComponent } from '@components/preview/preview.component';
-import { CodeService, Project, CodeState } from './services/code.service';
-import { ChatComponent } from '@components/chat/chat.component';
-import { StudentDashboardComponent } from '@components/student-dashboard/student-dashboard.component';
-import { TeacherDashboardComponent } from '@components/teacher-dashboard/teacher-dashboard.component';
-import { AssignmentModalComponent } from '@components/assignment-modal/assignment-modal.component';
-import { ClassModalComponent } from '@components/class-modal/class-modal.component';
-import { AuthService } from './services/auth.service';
-import { LoginComponent } from '@components/login/login.component';
-import { ThemeService } from './services/theme.service';
-import { PaginationControlsComponent } from '@components/ui/pagination-controls.component';
-
-type ActiveTab = 'html' | 'css' | 'js';
+type ActiveTab = "html" | "css" | "js";
 
 @Component({
-  selector: 'app-root',
-  templateUrl: './app.component.html',
-  styleUrls: ['./app.component.scss'],
+  selector: "app-root",
+  templateUrl: "./app.component.html",
+  styleUrls: ["./app.component.scss"],
   imports: [
     CommonModule,
     EditorComponent,
@@ -32,6 +39,7 @@ type ActiveTab = 'html' | 'css' | 'js';
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
 export class AppComponent {
+  private destroyed = new Subject<void>();
   authService = inject(AuthService);
   codeService = inject(CodeService);
   themeService = inject(ThemeService);
@@ -40,58 +48,63 @@ export class AppComponent {
   currentUser = this.authService.currentUser;
   userRole = computed(() => this.currentUser()?.role ?? null);
   isDarkMode = this.themeService.currentTheme;
-  
+
   showSaveToast = signal(false);
-  
+
   // --- Project & View State ---
   activeProject = this.codeService.activeProject;
-  
+
   // --- Local UI State for Coderoom ---
-  activeTab = signal<ActiveTab>('html');
+  activeTab = signal<ActiveTab>("html");
   showTeacherCode = signal<boolean>(false);
 
   // --- Grading State ---
   gradeInput = signal<number | null>(null);
-  feedbackInput = signal<string>('');
+  feedbackInput = signal<string>("");
 
   // --- Chat State (Floating) ---
   isChatOpen = signal(false);
-  chatPosition = signal({ x: 0, y: 0 }); 
+  chatPosition = signal({ x: 0, y: 0 });
   isDragging = signal(false);
   private dragOffset = { x: 0, y: 0 };
 
   // --- Computed signals for providing code to editors ---
   studentCode = computed<CodeState | null>(() => {
-    return this.codeService.currentUserSubmission()?.code ?? null
+    return this.codeService.currentUserSubmission()?.code ?? null;
   });
-  
+
   teacherCode = computed<CodeState | null>(() => {
-    return this.activeProject()?.teacherCode ?? null
+    return this.activeProject()?.teacherCode ?? null;
   });
 
   teacherEditorCode = computed<CodeState | null>(() => {
-    return this.codeService.viewedStudentSubmission()?.code ?? this.teacherCode();
+    return (
+      this.codeService.viewedStudentSubmission()?.code ?? this.teacherCode()
+    );
   });
 
   teacherEditorTitle = computed<string>(() => {
     const student = this.codeService.viewedStudentSubmission();
     const lang = this.activeTab().toUpperCase();
-    return student ? `Código de ${student.studentName} (${lang})` : `Código do Professor (${lang})`;
+    return student
+      ? `Código de ${student.studentName} (${lang})`
+      : `Código do Professor (${lang})`;
   });
 
   previewDocument = computed(() => {
     const project = this.activeProject();
-    if (!project) return '';
+    if (!project) return "";
 
     let codeToPreview: CodeState | null = null;
-    
-    if (this.userRole() === 'teacher') {
-      codeToPreview = this.codeService.viewedStudentSubmission()?.code ?? project.teacherCode;
+
+    if (this.userRole() === "teacher") {
+      codeToPreview =
+        this.codeService.viewedStudentSubmission()?.code ?? project.teacherCode;
     } else {
       codeToPreview = this.studentCode();
     }
-    
-    if (!codeToPreview) return '';
+
+    if (!codeToPreview) return "";
 
     return `
       <!DOCTYPE html>
@@ -110,10 +123,10 @@ export class AppComponent {
   }
 
   logout() {
-      this.authService.logout();
-      this.codeService.deselectProject();
-      this.activeTab.set('html');
-      this.showTeacherCode.set(false);
+    this.authService.logout();
+    this.codeService.deselectProject();
+    this.activeTab.set("html");
+    this.showTeacherCode.set(false);
   }
 
   selectProject(project: Project) {
@@ -129,11 +142,17 @@ export class AppComponent {
   }
 
   toggleTeacherCode() {
-    this.showTeacherCode.update(v => !v);
+    this.showTeacherCode.update((v) => !v);
   }
 
-  async updateCode(language: 'html' | 'css' | 'js', content: string) {
-    await this.codeService.updateStudentCode(language, content);
+  updateCode(language: "html" | "css" | "js", content: string) {
+    const obs = this.codeService.updateStudentCode(language, content);
+    if (obs) {
+      obs.pipe(takeUntil(this.destroyed)).subscribe({
+        next: () => {},
+        error: (err) => console.error("Failed to update code", err),
+      });
+    }
   }
 
   saveCode() {
@@ -142,26 +161,40 @@ export class AppComponent {
     setTimeout(() => this.showSaveToast.set(false), 3000);
   }
 
-  async formatCode() {
+  formatCode() {
     const lang = this.activeTab();
     const currentCode = this.studentCode();
     if (!currentCode) return;
     const codeToFormat = currentCode[lang];
-    const formattedCode = await this.codeService.formatCode(lang, codeToFormat);
-    await this.codeService.updateStudentCode(lang, formattedCode);
+
+    this.codeService
+      .formatCode(lang, codeToFormat)
+      .pipe(takeUntil(this.destroyed))
+      .subscribe({
+        next: (formattedCode) => {
+          const obs = this.codeService.updateStudentCode(lang, formattedCode);
+          if (obs) {
+            obs.pipe(takeUntil(this.destroyed)).subscribe({
+              next: () => {},
+              error: (err) => console.error('Failed to update formatted code', err),
+            });
+          }
+        },
+        error: (err) => console.error('Failed to format code', err),
+      });
   }
 
   selectStudent(studentId: number | null) {
     this.codeService.selectStudentToView(studentId);
-    
+
     // Load grading data if a student is selected
     const submission = this.codeService.viewedStudentSubmission();
     if (submission) {
       this.gradeInput.set(submission.grade ?? null);
-      this.feedbackInput.set(submission.feedback ?? '');
+      this.feedbackInput.set(submission.feedback ?? "");
     } else {
       this.gradeInput.set(null);
-      this.feedbackInput.set('');
+      this.feedbackInput.set("");
     }
   }
 
@@ -174,32 +207,46 @@ export class AppComponent {
     this.feedbackInput.set((event.target as HTMLTextAreaElement).value);
   }
 
-  async submitGrade() {
+  submitGrade() {
     const project = this.activeProject();
     const studentId = this.codeService.viewedStudentId();
     const grade = this.gradeInput();
     const feedback = this.feedbackInput();
 
     if (project && studentId && grade !== null) {
-      await this.codeService.gradeStudentSubmission(project.id, studentId, grade, feedback);
-      this.showSaveToast.set(true);
-      setTimeout(() => this.showSaveToast.set(false), 3000);
+      this.codeService
+        .gradeStudentSubmission(project.id, studentId, grade, feedback)
+        .pipe(takeUntil(this.destroyed))
+        .subscribe({
+          next: () => {
+            this.showSaveToast.set(true);
+            setTimeout(() => this.showSaveToast.set(false), 3000);
+          },
+          error: (err) => console.error("Failed to submit grade", err),
+        });
     }
   }
 
+  ngOnDestroy() {
+    this.destroyed.next();
+    this.destroyed.complete();
+  }
+
   toggleChat() {
-    this.isChatOpen.update(v => !v);
+    this.isChatOpen.update((v) => !v);
   }
 
   startDrag(event: MouseEvent) {
     this.isDragging.set(true);
-    const container = (event.currentTarget as HTMLElement).closest('.floating-chat-container') as HTMLElement;
+    const container = (event.currentTarget as HTMLElement).closest(
+      ".floating-chat-container"
+    ) as HTMLElement;
     if (!container) return;
 
     const rect = container.getBoundingClientRect();
     this.dragOffset = {
       x: event.clientX - rect.left,
-      y: event.clientY - rect.top
+      y: event.clientY - rect.top,
     };
   }
 
