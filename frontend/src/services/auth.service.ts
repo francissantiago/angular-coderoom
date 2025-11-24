@@ -2,6 +2,8 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { User } from '../models/domain.models';
+import { AuthManager } from './auth-manager.service';
+import { environment } from '../../environments/environment';
 import { jwtDecode } from 'jwt-decode';
 
 @Injectable({
@@ -9,6 +11,7 @@ import { jwtDecode } from 'jwt-decode';
 })
 export class AuthService {
   private http = inject(HttpClient);
+  private authManager = inject(AuthManager);
   
   // Current authenticated user state
   currentUser = signal<User | null>(null);
@@ -34,9 +37,10 @@ export class AuthService {
 
   async login(email: string, password: string): Promise<boolean> {
     try {
-      const response: any = await this.http.post('http://localhost:3000/auth/login', { email, password }).toPromise();
+      const response: any = await this.http.post(`${environment.apiUrl}/auth/login`, { email, password }).toPromise();
       if (response && response.access_token) {
         localStorage.setItem('access_token', response.access_token);
+        this.authManager.token = response.access_token;
         const decoded: any = jwtDecode(response.access_token);
         this.currentUser.set({
           id: decoded.sub,
@@ -54,6 +58,7 @@ export class AuthService {
 
   logout() {
     localStorage.removeItem('access_token');
+    this.authManager.token = null;
     this.currentUser.set(null);
   }
 

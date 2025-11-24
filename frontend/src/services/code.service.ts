@@ -1,11 +1,13 @@
 
 import { Injectable, signal, computed, inject } from '@angular/core';
+import { forkJoin } from 'rxjs';
 import { CodeState, Project, Student, ClassGroup, ClassSession, Lesson, StudentSubmission, Certificate } from '../models/domain.models';
 import { StudentService } from './student.service';
 import { ClassService } from './class.service';
 import { ProjectService } from './project.service';
 import { AttendanceService } from './attendance.service';
 import { CertificateService } from './certificate.service';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from './auth.service';
 
 // Add declarations for Prettier loaded from CDN
@@ -161,22 +163,22 @@ export class CodeService {
   }
 
   // --- Project Facade Methods ---
-  async createNewProject(classId: number, name: string, description: string) {
-    await this.projectService.createNewProject(classId, name, description);
+  createNewProject(classId: number, name: string, description: string) {
+    return this.projectService.createNewProject(classId, name, description);
   }
 
-  async updateProjectDetails(id: number, name: string, description: string) {
-    await this.projectService.updateProjectDetails(id, name, description);
+  updateProjectDetails(id: number, name: string, description: string) {
+    return this.projectService.updateProjectDetails(id, name, description);
   }
   
-  async updateStudentCode(language: 'html' | 'css' | 'js', content: string) {
+  updateStudentCode(language: 'html' | 'css' | 'js', content: string) {
     const projectId = this.activeProjectId();
     if (!projectId) return;
-    await this.projectService.updateStudentCode(projectId, this.currentStudentId, language, content);
+    return this.projectService.updateStudentCode(projectId, this.currentStudentId, language, content);
   }
 
-  async updateProjectAssignments(projectId: number, assignedStudentIds: number[]) {
-    await this.projectService.updateProjectAssignments(projectId, assignedStudentIds);
+  updateProjectAssignments(projectId: number, assignedStudentIds: number[]) {
+    return this.projectService.updateProjectAssignments(projectId, assignedStudentIds);
   }
 
   saveCode() {
@@ -185,47 +187,49 @@ export class CodeService {
     this.projectService.saveCodeTimestamp(projectId, this.currentStudentId);
   }
 
-  async gradeStudentSubmission(projectId: number, studentId: number, grade: number, feedback: string) {
-    await this.projectService.gradeStudentSubmission(projectId, studentId, grade, feedback);
+  gradeStudentSubmission(projectId: number, studentId: number, grade: number, feedback: string) {
+    return this.projectService.gradeStudentSubmission(projectId, studentId, grade, feedback);
   }
 
   // --- Class Facade Methods ---
-  async addNewClassGroup(name: string, description: string, schedule: string, studentIds: number[]) {
-    await this.classService.addNewClassGroup(name, description, schedule, studentIds);
+  addNewClassGroup(name: string, description: string, schedule: string, studentIds: number[]) {
+    return this.classService.addNewClassGroup(name, description, schedule, studentIds);
   }
 
-  async updateClassGroup(classId: number, name: string, description: string, schedule: string, studentIds: number[]) {
-    await this.classService.updateClassGroup(classId, name, description, schedule, studentIds);
+  updateClassGroup(classId: number, name: string, description: string, schedule: string, studentIds: number[]) {
+    return this.classService.updateClassGroup(classId, name, description, schedule, studentIds);
   }
 
-  async addLessonToClass(classId: number, lessonData: Omit<Lesson, 'id'>) {
-    await this.classService.addLessonToClass(classId, lessonData);
+  addLessonToClass(classId: number, lessonData: Omit<Lesson, 'id'>) {
+    return this.classService.addLessonToClass(classId, lessonData);
   }
 
-  async updateLessonInClass(classId: number, lesson: Lesson) {
-    await this.classService.updateLessonInClass(classId, lesson);
+  updateLessonInClass(classId: number, lesson: Lesson) {
+    return this.classService.updateLessonInClass(classId, lesson);
   }
 
-  async removeLessonFromClass(classId: number, lessonId: number) {
-    await this.classService.removeLessonFromClass(classId, lessonId);
+  removeLessonFromClass(classId: number, lessonId: number) {
+    return this.classService.removeLessonFromClass(classId, lessonId);
   }
 
   // --- Student Facade Methods ---
-  async addStudent(data: { name: string; email: string; enrollmentNumber: string; birthDate: string }) {
-    await this.studentService.addStudent(data);
+  addStudent(data: { name: string; email: string; enrollmentNumber: string; birthDate: string }) {
+    return this.studentService.addStudent(data);
   }
 
-  async removeStudent(studentId: number) {
+  removeStudent(studentId: number) {
     // Orchestrate deletion across all domains
-    await this.studentService.removeStudent(studentId);
-    await this.classService.removeStudentFromClasses(studentId);
-    await this.projectService.removeStudentSubmissions(studentId);
-    await this.attendanceService.removeStudentFromAttendance(studentId);
+    return forkJoin([
+      this.studentService.removeStudent(studentId),
+      this.classService.removeStudentFromClasses(studentId),
+      this.projectService.removeStudentSubmissions(studentId),
+      this.attendanceService.removeStudentFromAttendance(studentId),
+    ]);
   }
 
   // --- Session / Attendance Facade Methods ---
-  async registerClassSession(data: Omit<ClassSession, 'id'>) {
-    await this.attendanceService.registerSession(data);
+  registerClassSession(data: Omit<ClassSession, 'id'>) {
+    return this.attendanceService.registerSession(data);
   }
 
   getAttendanceRecord(classId: number, date: string): ClassSession | undefined {
@@ -258,8 +262,8 @@ export class CodeService {
   }
 
   // --- Certificate Facade Methods ---
-  async issueCertificate(studentId: number, classId: number): Promise<Certificate> {
-    return await this.certificateService.issueCertificate(studentId, classId);
+  issueCertificate(studentId: number, classId: number) {
+    return this.certificateService.issueCertificate(studentId, classId);
   }
 
   getCertificate(studentId: number, classId: number): Certificate | undefined {

@@ -2,6 +2,10 @@
 import { Injectable, signal, inject } from '@angular/core';
 import { ClassSession } from '../models/domain.models';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
+import { Observable, retry, timer, tap, catchError, of } from 'rxjs';
+import { HandleErrors } from './handle-errors.service';
+import { AuthManager } from './auth-manager.service';
 
 // Sessions are loaded from the API via HTTP; mock data removed.
 
@@ -10,7 +14,10 @@ import { HttpClient } from '@angular/common/http';
 })
 export class AttendanceService {
   private http = inject(HttpClient);
-  private baseUrl = 'http://localhost:3000';
+  private apiUrl = environment.apiUrl;
+  private headers = inject(AuthManager).headers;
+  private api_retry_count = environment.apiMaxRetries || 3;
+  private handlerErrors = inject(HandleErrors);
   // We now store Sessions, which contain attendance AND content info
   sessions = signal<ClassSession[]>([]);
 
@@ -18,25 +25,46 @@ export class AttendanceService {
     this.loadSessions();
   }
 
-  async loadSessions() {
-    try {
-      const list = await this.http.get<ClassSession[]>(`${this.baseUrl}/class-sessions`).toPromise();
-      this.sessions.set(list || []);
-    } catch (error) {
-      console.error('Failed to load sessions', error);
-      this.sessions.set([]);
-    }
+  loadSessions() {
+    this.getAll().subscribe({
+      next: (list) => this.sessions.set(list || []),
+      error: (err) => {
+        console.error('Failed to load sessions', err);
+        this.sessions.set([]);
+      },
+    });
   }
 
-  async registerSession(data: Omit<ClassSession, 'id'>) {
-    try {
-      const created = await this.http.post<ClassSession>(`${this.baseUrl}/class-sessions`, data).toPromise();
-      this.sessions.update(s => [...s, created]);
-      return created;
-    } catch (error) {
-      console.error('Failed to create session', error);
-      throw error;
-    }
+  getAll(): Observable<ClassSession[]> {
+    return this.http.get<ClassSession[]>(`${this.apiUrl}/class-sessions`, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(
+            `Tentativa ${retryCount} de recuperar sessões devido a erro:`,
+            error
+          );
+          return timer(retryCount * 2000);
+        },
+      }),
+      catchError(this.handlerErrors.handleError)
+    );
+  }
+
+  registerSession(data: Omit<ClassSession, 'id'>): Observable<ClassSession> {
+    return this.http.post<ClassSession>(`${this.apiUrl}/class-sessions`, data, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de criar sessão devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap((created) => this.sessions.update((s) => [...s, created])),
+      catchError(this.handlerErrors.handleError)
+    );
   }
 
   getSessionsByClass(classId: number): ClassSession[] {
@@ -47,17 +75,29 @@ export class AttendanceService {
     return this.sessions().filter(s => s.classId === classId && s.lessonId === lessonId);
   }
 
-  async removeStudentFromAttendance(studentId: number) {
-    this.sessions.update(sessions => sessions.map(s => ({ ...s, presentStudentIds: s.presentStudentIds.filter(id => id !== studentId) })));
-    try {
-      // Persist changes to server: update each modified session
-      const modified = this.sessions().filter(s => !s.presentStudentIds.includes(studentId));
-      for (const ms of modified) {
-        await this.http.put(`${this.baseUrl}/class-sessions/${ms.id}`, ms).toPromise();
-      }
-    } catch (error) {
-      console.error('Failed to persist session updates', error);
-    }
+  removeStudentFromAttendance(studentId: number): Observable<any> {
+    // Determine modified sessions and update signal
+    this.sessions.update((sessions) =>
+      sessions.map((s) => ({ ...s, presentStudentIds: s.presentStudentIds.filter((id) => id !== studentId) }))
+    );
+
+    const modified = this.sessions().filter((s) => !s.presentStudentIds.includes(studentId));
+    if (modified.length === 0) return of(null);
+
+    // Persist changes (parallel) and return completion as Observable
+    return new Observable((subscriber) => {
+      Promise.all(
+        modified.map((ms) => this.http.put(`${this.apiUrl}/class-sessions/${ms.id}`, ms, { headers: this.headers }).toPromise())
+      )
+        .then((res) => {
+          subscriber.next(res);
+          subscriber.complete();
+        })
+        .catch((err) => {
+          console.error('Failed to persist session updates', err);
+          subscriber.error(err);
+        });
+    });
   }
 
   // Calculate frequency based on ALL sessions given to that class

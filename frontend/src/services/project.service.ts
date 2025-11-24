@@ -3,6 +3,10 @@ import { Injectable, signal, inject } from '@angular/core';
 import { Project, Student } from '../models/domain.models';
 import { StudentService } from './student.service';
 import { HttpClient } from '@angular/common/http';
+import { environment } from '../../environments/environment';
+import { Observable, retry, timer, tap, catchError, of, forkJoin, map } from 'rxjs';
+import { HandleErrors } from './handle-errors.service';
+import { AuthManager } from './auth-manager.service';
 
 // Projects are loaded from the API; mock data removed.
 
@@ -13,55 +17,86 @@ export class ProjectService {
   projects = signal<Project[]>([]);
   private studentService = inject(StudentService);
   private http = inject(HttpClient);
-  private baseUrl = 'http://localhost:3000';
+  private apiUrl = environment.apiUrl;
+  private headers = inject(AuthManager).headers;
+  private api_retry_count = environment.apiMaxRetries || 3;
+  private handlerErrors = inject(HandleErrors);
 
   constructor() {
     this.loadProjects();
   }
 
-  async loadProjects() {
-    try {
-      const list = await this.http.get<Project[]>(`${this.baseUrl}/projects`).toPromise();
-      this.projects.set(list || []);
-    } catch (error) {
-      console.error('Failed to load projects', error);
-      this.projects.set([]);
-    }
+  loadProjects() {
+    this.getAll().subscribe({
+      next: (list) => this.projects.set(list || []),
+      error: (err) => {
+        console.error('Failed to load projects', err);
+        this.projects.set([]);
+      },
+    });
   }
 
-  async createNewProject(classId: number, name: string, description: string) {
+  getAll(): Observable<Project[]> {
+    return this.http
+      .get<Project[]>(`${this.apiUrl}/projects`, {
+        headers: this.headers,
+      })
+      .pipe(
+        retry({
+          count: this.api_retry_count,
+          delay: (error, retryCount) => {
+            if (error.status < 500) throw error;
+            console.warn(`Tentativa ${retryCount} de recuperar projetos devido a erro:`, error);
+            return timer(retryCount * 2000);
+          },
+        }),
+        catchError(this.handlerErrors.handleError)
+      );
+  }
+
+  createNewProject(classId: number, name: string, description: string): Observable<Project> {
     const payload: Partial<Project> = {
       classId,
       name,
       description,
-      teacherCode: { html: '<h1>Novo Projeto</h1>', css: 'body { background: #eee; }', js: 'console.log("Comece aqui!");' },
+      teacherCode: { html: '<h1>Novo Projeto</h1>', css: 'body { background: #eee; }', js: "console.log('Comece aqui!');" },
       studentSubmissions: [],
     };
-    try {
-      const created = await this.http.post<Project>(`${this.baseUrl}/projects`, payload).toPromise();
-      this.projects.update(projects => [...projects, created]);
-      return created;
-    } catch (error) {
-      console.error('Failed to create project', error);
-      throw error;
-    }
+
+    return this.http.post<Project>(`${this.apiUrl}/projects`, payload, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de criar projeto devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap((created) => this.projects.update((projects) => [...projects, created])),
+      catchError(this.handlerErrors.handleError)
+    );
   }
 
-  async updateProjectDetails(id: number, name: string, description: string) {
-    const project = this.projects().find(p => p.id === id);
-    if (!project) return null;
+  updateProjectDetails(id: number, name: string, description: string): Observable<Project | null> {
+    const project = this.projects().find((p) => p.id === id);
+    if (!project) return of(null);
     const updated = { ...project, name, description } as Project;
-    try {
-      const resp = await this.http.put<Project>(`${this.baseUrl}/projects/${id}`, updated).toPromise();
-      this.projects.update(projects => projects.map(p => p.id === id ? resp : p));
-      return resp;
-    } catch (error) {
-      console.error('Failed to update project', error);
-      return null;
-    }
+
+    return this.http.put<Project>(`${this.apiUrl}/projects/${id}`, updated, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de atualizar projeto ${id} devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap((resp) => this.projects.update((projects) => projects.map((p) => (p.id === id ? resp : p)))),
+      catchError(this.handlerErrors.handleError)
+    );
   }
 
-  async updateProjectAssignments(projectId: number, assignedStudentIds: number[]) {
+  updateProjectAssignments(projectId: number, assignedStudentIds: number[]): Observable<Project | undefined> {
     const allStudents = this.studentService.students();
     // Build new projects array synchronously
     const current = this.projects();
@@ -94,21 +129,26 @@ export class ProjectService {
       return { ...p, studentSubmissions: updatedSubmissions };
     });
 
-    // Update signal
     this.projects.set(newProjects);
-
-    // Persist change to backend for the updated project
-    const updatedProject = newProjects.find(p => p.id === projectId);
-    if (updatedProject) {
-      try {
-        await this.http.put(`${this.baseUrl}/projects/${projectId}`, updatedProject).toPromise();
-      } catch (err) {
-        console.error('Failed to persist project assignments', err);
-      }
-    }
+    const updatedProject = newProjects.find((p) => p.id === projectId);
+    if (!updatedProject) return of(undefined);
+    return this.http.put<Project>(`${this.apiUrl}/projects/${projectId}`, updatedProject, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de atualizar atribuições do projeto ${projectId} devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap((proj) => {
+        this.projects.update((projects) => projects.map((p) => (p.id === proj.id ? proj : p)));
+      }),
+      catchError(this.handlerErrors.handleError)
+    );
   }
 
-  async updateStudentCode(projectId: number, studentId: number, language: 'html' | 'css' | 'js', content: string) {
+  updateStudentCode(projectId: number, studentId: number, language: 'html' | 'css' | 'js', content: string): Observable<Project | undefined> {
     const current = this.projects();
     const newProjects = current.map(p => {
       if (p.id !== projectId) return p;
@@ -117,16 +157,20 @@ export class ProjectService {
     });
 
     this.projects.set(newProjects);
-
-    // Persist change to backend
-    const updatedProject = newProjects.find(p => p.id === projectId);
-    if (updatedProject) {
-      try {
-        await this.http.put(`${this.baseUrl}/projects/${projectId}`, updatedProject).toPromise();
-      } catch (err) {
-        console.error('Failed to persist code update', err);
-      }
-    }
+    const updatedProject = newProjects.find((p) => p.id === projectId);
+    if (!updatedProject) return of(undefined);
+    return this.http.put<Project>(`${this.apiUrl}/projects/${projectId}`, updatedProject, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de salvar alteração de código no projeto ${projectId} devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap((proj) => this.projects.update((projects) => projects.map((p) => (p.id === proj.id ? proj : p)))),
+      catchError(this.handlerErrors.handleError)
+    );
   }
 
   saveCodeTimestamp(projectId: number, studentId: number) {
@@ -148,7 +192,7 @@ export class ProjectService {
     });
   }
 
-  async gradeStudentSubmission(projectId: number, studentId: number, grade: number, feedback: string) {
+  gradeStudentSubmission(projectId: number, studentId: number, grade: number, feedback: string): Observable<Project | undefined> {
     const current = this.projects();
     const newProjects = current.map(p => {
       if (p.id !== projectId) return p;
@@ -160,18 +204,23 @@ export class ProjectService {
     });
 
     this.projects.set(newProjects);
-
-    const updatedProject = newProjects.find(p => p.id === projectId);
-    if (updatedProject) {
-      try {
-        await this.http.put(`${this.baseUrl}/projects/${projectId}`, updatedProject).toPromise();
-      } catch (err) {
-        console.error('Failed to persist grade update', err);
-      }
-    }
+    const updatedProject = newProjects.find((p) => p.id === projectId);
+    if (!updatedProject) return of(undefined);
+    return this.http.put<Project>(`${this.apiUrl}/projects/${projectId}`, updatedProject, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de aplicar nota no projeto ${projectId} devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap((proj) => this.projects.update((projects) => projects.map((p) => (p.id === proj.id ? proj : p)))),
+      catchError(this.handlerErrors.handleError)
+    );
   }
 
-  async removeStudentSubmissions(studentId: number) {
+  removeStudentSubmissions(studentId: number): Observable<any> {
     // Determine affected projects BEFORE modification
     const current = this.projects();
     const affectedBefore = current.filter(p => p.studentSubmissions.some(s => s.studentId === studentId));
@@ -186,29 +235,38 @@ export class ProjectService {
 
     // Persist updates to backend only for those that were affected
     const updated = this.projects();
-    const affectedAfter = updated.filter(p => affectedBefore.some(a => a.id === p.id));
-    const persPromises = affectedAfter.map(p => this.http.put(`${this.baseUrl}/projects/${p.id}`, p).toPromise().catch(err => console.error('Failed to persist project update', err)));
-    await Promise.all(persPromises);
+    const affectedAfter = updated.filter((p) => affectedBefore.some((a) => a.id === p.id));
+    if (affectedAfter.length === 0) return of(null);
+    const observables = affectedAfter.map((p) => this.http.put(`${this.apiUrl}/projects/${p.id}`, p, { headers: this.headers }).pipe(catchError((err) => {
+      console.error('Failed to persist project update', err);
+      return of(null);
+    })));
+    return forkJoin(observables).pipe(catchError(this.handlerErrors.handleError));
   }
 
-  async deleteProject(projectId: number) {
-    try {
-      await this.http.delete(`${this.baseUrl}/projects/${projectId}`).toPromise();
-      this.projects.update(projects => projects.filter(p => p.id !== projectId));
-      return true;
-    } catch (error) {
-      console.error('Failed to delete project', error);
-      return false;
-    }
+  deleteProject(projectId: number): Observable<boolean> {
+    return this.http.delete(`${this.apiUrl}/projects/${projectId}`, { headers: this.headers }).pipe(
+      retry({
+        count: this.api_retry_count,
+        delay: (error, retryCount) => {
+          if (error.status < 500) throw error;
+          console.warn(`Tentativa ${retryCount} de deletar projeto ${projectId} devido a erro:`, error);
+          return timer(retryCount * 2000);
+        },
+      }),
+      tap(() => this.projects.update((projects) => projects.filter((p) => p.id !== projectId))),
+      map(() => true),
+      catchError((e) => {
+        console.error('Failed to delete project', e);
+        return of(false);
+      })
+    );
   }
 
-  async getProjectById(projectId: number) {
-    try {
-      const resp = await this.http.get<Project>(`${this.baseUrl}/projects/${projectId}`).toPromise();
-      return resp;
-    } catch (error) {
-      console.error('Failed to get project by id', error);
-      return null;
-    }
+  getProjectById(projectId: number): Observable<Project | null> {
+    return this.http.get<Project>(`${this.apiUrl}/projects/${projectId}`, { headers: this.headers }).pipe(catchError((err) => {
+      console.error('Failed to get project by id', err);
+      return of(null);
+    }));
   }
 }
