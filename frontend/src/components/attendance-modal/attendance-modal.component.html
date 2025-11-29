@@ -17,6 +17,11 @@
 
     <!-- Modal Body -->
     <main class="p-6 max-h-[60vh] overflow-y-auto">
+        @if(errorMessage()) {
+            <div class="mb-4 p-3 rounded bg-red-50 dark:bg-[#4b1f1f] text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800">
+                {{ errorMessage() }}
+            </div>
+        }
         @if(students().length > 0) {
             <div class="flex items-center justify-between mb-4 pb-2 border-b border-gray-200 dark:border-gray-700">
                 <span class="text-sm font-semibold text-gray-700 dark:text-gray-300">Lista de Presença</span>
