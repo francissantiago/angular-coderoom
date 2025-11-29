@@ -97,9 +97,10 @@ export class ClassService {
     const current = this.classGroups();
     const updatedGroups = current.map((g) => {
       if (g.id === classId) {
-        const nextId = g.lessons.length > 0 ? Math.max(...g.lessons.map((m) => m.id)) + 1 : 1;
+        const existingLessons = g.lessons || [];
+        const nextId = existingLessons.length > 0 ? Math.max(...existingLessons.map((m) => m.id)) + 1 : 1;
         const newLesson: Lesson = { ...lessonData, id: nextId };
-        return { ...g, lessons: [...g.lessons, newLesson] };
+        return { ...g, lessons: [...existingLessons, newLesson] };
       }
       return g;
     });
@@ -124,7 +125,8 @@ export class ClassService {
     const current = this.classGroups();
     const updatedGroups = current.map((g) => {
       if (g.id === classId) {
-        return { ...g, lessons: g.lessons.map((m) => (m.id === lesson.id ? lesson : m)) };
+        const existingLessons = g.lessons || [];
+        return { ...g, lessons: existingLessons.map((m) => (m.id === lesson.id ? lesson : m)) };
       }
       return g;
     });
@@ -149,7 +151,8 @@ export class ClassService {
     const current = this.classGroups();
     const updatedGroups = current.map((g) => {
       if (g.id === classId) {
-        return { ...g, lessons: g.lessons.filter((m) => m.id !== lessonId) };
+        const existingLessons = g.lessons || [];
+        return { ...g, lessons: existingLessons.filter((m) => m.id !== lessonId) };
       }
       return g;
     });
