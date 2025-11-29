@@ -1,16 +1,18 @@
 
-import { Component, ChangeDetectionStrategy, input, output, effect, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, effect, signal, OnInit, OnDestroy, inject } from '@angular/core';
+import { Subject } from 'rxjs';
 import { CommonModule } from '@angular/common';
-import { Project } from '@services/code.service';
+import { Project, CodeService } from '@services/code.service';
 
 @Component({
   selector: 'app-project-modal',
+  standalone: true,
   templateUrl: './project-modal.component.html',
   styleUrls: ['./project-modal.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ProjectModalComponent {
+export class ProjectModalComponent implements OnInit, OnDestroy {
   projectToEdit = input<Project | null>(null);
   targetClassId = input<number | null>(null); // Required when creating a new project
   
@@ -31,6 +33,15 @@ export class ProjectModalComponent {
         this.description.set('');
       }
     });
+  }
+
+  // Common component state and lifecycle
+  isLoading = signal(false);
+  private destroyed = new Subject<void>();
+  private codeService = inject(CodeService);
+
+  ngOnInit(): void {
+    // placeholder if init logic is needed in future
   }
 
   onNameChange(event: Event) {
@@ -57,5 +68,10 @@ export class ProjectModalComponent {
 
   onClose() {
     this.close.emit();
+  }
+
+  ngOnDestroy(): void {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 }
