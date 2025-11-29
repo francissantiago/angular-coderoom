@@ -1,5 +1,6 @@
 
-import { Component, ChangeDetectionStrategy, output, inject, computed, signal, effect } from '@angular/core';
+import { Component, ChangeDetectionStrategy, output, inject, computed, signal, effect, OnInit, OnDestroy } from '@angular/core';
+import { Subject } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { CodeService, Project, StudentSubmission, ClassGroup, Lesson, Certificate, Student } from '@services/code.service';
 import { CertificateViewComponent } from '../certificate-view/certificate-view.component';
@@ -7,14 +8,19 @@ import { TableState } from '@utils/table.utils';
 
 @Component({
   selector: 'app-student-dashboard',
+  standalone: true,
   templateUrl: './student-dashboard.component.html',
   styleUrls: ['./student-dashboard.component.scss'],
   imports: [CommonModule, CertificateViewComponent],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class StudentDashboardComponent {
+export class StudentDashboardComponent implements OnInit, OnDestroy {
   selectProject = output<Project>();
   codeService = inject(CodeService);
+  private destroyed = new Subject<void>();
+
+  // UI state
+  isLoading = signal(false);
 
   // Data Signals
   rawProjects = this.codeService.assignedProjectsForCurrentUser;
@@ -155,5 +161,14 @@ export class StudentDashboardComponent {
       presentClasses,
       lastDate
     };
+  }
+
+  ngOnInit() {
+    // reserve for future initialization logic if needed
+  }
+
+  ngOnDestroy() {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 }
