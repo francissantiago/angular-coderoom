@@ -1,17 +1,19 @@
 
-import { Component, ChangeDetectionStrategy, input, output, AfterViewInit, OnChanges, SimpleChanges, ElementRef, viewChild } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, AfterViewInit, OnChanges, SimpleChanges, ElementRef, viewChild, OnDestroy, signal } from '@angular/core';
+import { Subject } from 'rxjs';
 import { CommonModule } from '@angular/common';
 
 declare var Prism: any;
 
 @Component({
   selector: 'app-editor',
+  standalone: true,
   templateUrl: './editor.component.html',
   styleUrls: ['./editor.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class EditorComponent implements AfterViewInit, OnChanges {
+export class EditorComponent implements AfterViewInit, OnChanges, OnDestroy {
   code = input.required<string>();
   title = input.required<string>();
   language = input.required<'html' | 'css' | 'js'>();
@@ -24,6 +26,10 @@ export class EditorComponent implements AfterViewInit, OnChanges {
   editorTextarea = viewChild.required<ElementRef<HTMLTextAreaElement>>('editorTextarea');
   editorPre = viewChild.required<ElementRef<HTMLElement>>('editorPre');
   editorCode = viewChild.required<ElementRef<HTMLElement>>('editorCode');
+
+  // Common state used in many components (keeps consistency)
+  isLoading = signal(false);
+  private destroyed = new Subject<void>();
 
   ngAfterViewInit(): void {
     this.editorTextarea().nativeElement.value = this.code();
@@ -282,5 +288,9 @@ export class EditorComponent implements AfterViewInit, OnChanges {
         textarea.setSelectionRange(selectionStart, selectionEnd + blockMarkers.start.length + blockMarkers.end.length);
         this.handleCodeChange(newCode);
     }
+  }
+  ngOnDestroy(): void {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 }

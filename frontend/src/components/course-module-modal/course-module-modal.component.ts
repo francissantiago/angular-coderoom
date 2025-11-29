@@ -1,16 +1,18 @@
 
-import { Component, ChangeDetectionStrategy, input, output, effect, signal } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, effect, signal, OnInit, OnDestroy } from '@angular/core';
+import { Subject } from 'rxjs';
 import { CommonModule } from '@angular/common';
 import { Lesson } from '@services/code.service';
 
 @Component({
   selector: 'app-course-module-modal',
+  standalone: true,
   templateUrl: './course-module-modal.component.html',
   styleUrls: ['./course-module-modal.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class CourseModuleModalComponent {
+export class CourseModuleModalComponent implements OnInit, OnDestroy {
   moduleToEdit = input<Lesson | null>(null);
   
   close = output<void>();
@@ -20,6 +22,10 @@ export class CourseModuleModalComponent {
   description = signal('');
   duration = signal('');
   status = signal<'completed' | 'in-progress' | 'upcoming'>('upcoming');
+
+  // Optional common state
+  isLoading = signal<boolean>(false);
+  private destroyed = new Subject<void>();
 
   constructor() {
     effect(() => {
@@ -36,6 +42,13 @@ export class CourseModuleModalComponent {
         this.status.set('upcoming');
       }
     });
+  }
+
+  ngOnInit() {}
+
+  ngOnDestroy() {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 
   onTitleChange(event: Event) {

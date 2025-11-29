@@ -1,22 +1,33 @@
 
-import { Component, ChangeDetectionStrategy, inject, signal, viewChild, ElementRef, effect, input } from '@angular/core';
+import { Component, ChangeDetectionStrategy, inject, signal, viewChild, ElementRef, effect, input, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ChatService } from '@services/chat.service';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-chat',
+  standalone: true,
   templateUrl: './chat.component.html',
   styleUrls: ['./chat.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ChatComponent {
+export class ChatComponent implements OnInit, OnDestroy {
   chatService = inject(ChatService);
   messages = this.chatService.messages;
   newMessage = signal('');
   role = input<'Student' | 'Teacher'>('Student');
 
+  // Component state
+  isLoading = signal<boolean>(false);
+
+  private destroyed = new Subject<void>();
+
   chatContainer = viewChild<ElementRef<HTMLDivElement>>('chatContainer');
+
+  ngOnInit() {
+    // Initialization logic if needed
+  }
 
   constructor() {
     // Scroll to bottom when messages change
@@ -48,5 +59,10 @@ export class ChatComponent {
     if (container) {
       container.scrollTop = container.scrollHeight;
     }
+  }
+
+  ngOnDestroy() {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 }

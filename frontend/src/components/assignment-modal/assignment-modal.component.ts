@@ -5,6 +5,7 @@ import { CodeService, Project, ClassGroup, Student } from '@services/code.servic
 
 @Component({
   selector: 'app-assignment-modal',
+  standalone: true,
   templateUrl: './assignment-modal.component.html',
   styleUrls: ['./assignment-modal.component.scss'],
   imports: [CommonModule],

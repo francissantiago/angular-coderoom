@@ -1,27 +1,37 @@
 
-import { Component, ChangeDetectionStrategy, input, output, effect, signal, inject } from '@angular/core';
+import { Component, ChangeDetectionStrategy, input, output, effect, signal, inject, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { CodeService, ClassGroup } from '@services/code.service';
+import { Subject } from 'rxjs';
 
 @Component({
   selector: 'app-class-modal',
+  standalone: true,
   templateUrl: './class-modal.component.html',
   styleUrls: ['./class-modal.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class ClassModalComponent {
+export class ClassModalComponent implements OnInit, OnDestroy {
   classToEdit = input<ClassGroup | null>(null);
   close = output<void>();
   save = output<{ id: number | null; name: string; description: string; schedule: string; studentIds: number[] }>();
 
   private codeService = inject(CodeService);
+  private destroyed = new Subject<void>();
   allStudents = this.codeService.students;
   
+  // Component state
+  isLoading = signal<boolean>(false);
+
   className = signal('');
   classDescription = signal('');
   classSchedule = signal('');
   selectedStudentIds = signal<Set<number>>(new Set());
+
+  ngOnInit() {
+    // Initialization logic if needed
+  }
 
   constructor() {
     effect(() => {
@@ -80,5 +90,10 @@ export class ClassModalComponent {
 
   onClose() {
     this.close.emit();
+  }
+
+  ngOnDestroy() {
+    this.destroyed.next();
+    this.destroyed.complete();
   }
 }

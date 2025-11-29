@@ -4,8 +4,9 @@ import { Certificate, Student, ClassGroup } from '@services/code.service';
 
 @Component({
   selector: 'app-certificate-view',
+  standalone: true,
   templateUrl: './certificate-view.component.html',
-  styleUrls: ['./certificate-view.component.css'],
+  styleUrls: ['./certificate-view.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
   encapsulation: ViewEncapsulation.None, // Critical for global print styles

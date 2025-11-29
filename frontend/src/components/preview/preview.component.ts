@@ -5,6 +5,7 @@ import { DomSanitizer, SafeHtml } from '@angular/platform-browser';
 
 @Component({
   selector: 'app-preview',
+  standalone: true,
   templateUrl: './preview.component.html',
   styleUrls: ['./preview.component.scss'],
   imports: [CommonModule],

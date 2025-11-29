@@ -6,12 +6,13 @@ import { Subject, takeUntil, finalize } from 'rxjs';
 
 @Component({
   selector: 'app-login',
+  standalone: true,
   templateUrl: './login.component.html',
   styleUrls: ['./login.component.scss'],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class LoginComponent {
+export class LoginComponent implements OnDestroy {
   authService = inject(AuthService);
   private destroyed = new Subject<void>();
 
