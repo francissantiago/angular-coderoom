@@ -6,9 +6,10 @@ import {
   signal,
   computed,
   effect,
+  OnInit,
   OnDestroy,
 } from "@angular/core";
-import { Subject, takeUntil } from "rxjs";
+import { Subject, takeUntil, finalize } from "rxjs";
 import { CommonModule } from "@angular/common";
 import {
   CodeService,
@@ -31,6 +32,7 @@ import { PaginationControlsComponent } from "../ui/pagination-controls.component
 
 @Component({
   selector: "app-teacher-dashboard",
+  standalone: true,
   templateUrl: "./teacher-dashboard.component.html",
   styleUrls: ["./teacher-dashboard.component.scss"],
   imports: [
@@ -45,7 +47,7 @@ import { PaginationControlsComponent } from "../ui/pagination-controls.component
   ],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class TeacherDashboardComponent implements OnDestroy {
+export class TeacherDashboardComponent implements OnInit, OnDestroy {
   selectProject = output<Project>();
   codeService = inject(CodeService);
   private destroyed = new Subject<void>();
@@ -77,6 +79,7 @@ export class TeacherDashboardComponent implements OnDestroy {
 
   // State for navigation
   selectedClass = signal<ClassGroup | null>(null);
+  isLoading = signal(false);
 
   // Computed helper for template usage (Fixes error)
   selectedClassStudents = computed(() => {
@@ -176,6 +179,8 @@ export class TeacherDashboardComponent implements OnDestroy {
     this.destroyed.complete();
   }
 
+  ngOnInit() {}
+
   onSelectProject(project: Project) {
     this.selectProject.emit(project);
   }
@@ -225,21 +230,29 @@ export class TeacherDashboardComponent implements OnDestroy {
     description: string;
   }) {
     if (data.id) {
+      this.isLoading.set(true);
       this.codeService
         .updateProjectDetails(data.id, data.name, data.description)
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => this.closeProjectModal(),
-          error: (err) => console.error("Failed to update project", err),
+          error: (err) => {
+            this.triggerToast('Falha ao atualizar projeto. Tente novamente.');
+            console.error("Failed to update project", err);
+          },
         });
     } else {
       if (data.classId) {
+        this.isLoading.set(true);
         this.codeService
           .createNewProject(data.classId, data.name, data.description)
-          .pipe(takeUntil(this.destroyed))
+          .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
           .subscribe({
             next: () => this.closeProjectModal(),
-            error: (err) => console.error("Failed to create project", err),
+            error: (err) => {
+              this.triggerToast('Falha ao criar projeto. Tente novamente.');
+              console.error("Failed to create project", err);
+            },
           });
       }
     }
@@ -263,9 +276,10 @@ export class TeacherDashboardComponent implements OnDestroy {
       !birthDate.trim()
     )
       return;
+    this.isLoading.set(true);
     this.codeService
       .addStudent({ name, email, enrollmentNumber, birthDate })
-      .pipe(takeUntil(this.destroyed))
+      .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
       .subscribe({
         next: () =>
           this.newStudentData.set({
@@ -274,18 +288,25 @@ export class TeacherDashboardComponent implements OnDestroy {
             enrollmentNumber: "",
             birthDate: "",
           }),
-        error: (err) => console.error("Failed to add student", err),
+        error: (err) => {
+          this.triggerToast('Falha ao adicionar aluno. Tente novamente.');
+          console.error("Failed to add student", err);
+        },
       });
   }
 
   deleteStudent(studentId: number) {
     if (confirm("Tem certeza que deseja remover este aluno?")) {
+      this.isLoading.set(true);
       this.codeService
         .removeStudent(studentId)
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => {},
-          error: (err) => console.error("Failed to remove student", err),
+          error: (err) => {
+            this.triggerToast('Falha ao remover aluno. Tente novamente.');
+            console.error("Failed to remove student", err);
+          },
         });
     }
   }
@@ -303,12 +324,16 @@ export class TeacherDashboardComponent implements OnDestroy {
   handleSaveAssignments(assignedStudentIds: number[]) {
     const project = this.projectForAssignment();
     if (project) {
+      this.isLoading.set(true);
       this.codeService
         .updateProjectAssignments(project.id, assignedStudentIds)
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => this.closeAssignmentModal(),
-          error: (err) => console.error("Failed to update assignments", err),
+          error: (err) => {
+            this.triggerToast('Falha ao atualizar atribuições. Tente novamente.');
+            console.error("Failed to update assignments", err);
+          },
         });
     }
   }
@@ -332,6 +357,7 @@ export class TeacherDashboardComponent implements OnDestroy {
     studentIds: number[];
   }) {
     if (data.id) {
+      this.isLoading.set(true);
       this.codeService
         .updateClassGroup(
           data.id,
@@ -340,7 +366,7 @@ export class TeacherDashboardComponent implements OnDestroy {
           data.schedule,
           data.studentIds
         )
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => {
             const updated =
@@ -349,9 +375,13 @@ export class TeacherDashboardComponent implements OnDestroy {
             this.selectedClass.set(updated);
             this.closeClassModal();
           },
-          error: (err) => console.error("Failed to update class group", err),
+          error: (err) => {
+            this.triggerToast('Falha ao atualizar turma. Tente novamente.');
+            console.error("Failed to update class group", err);
+          },
         });
     } else {
+      this.isLoading.set(true);
       this.codeService
         .addNewClassGroup(
           data.name,
@@ -359,10 +389,13 @@ export class TeacherDashboardComponent implements OnDestroy {
           data.schedule,
           data.studentIds
         )
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => this.closeClassModal(),
-          error: (err) => console.error("Failed to add class group", err),
+          error: (err) => {
+            this.triggerToast('Falha ao criar turma. Tente novamente.');
+            console.error("Failed to add class group", err);
+          },
         });
     }
   }
@@ -390,6 +423,7 @@ export class TeacherDashboardComponent implements OnDestroy {
     if (!currentClass) return;
 
     if (data.id) {
+      this.isLoading.set(true);
       this.codeService
         .updateLessonInClass(currentClass.id, {
           id: data.id,
@@ -397,7 +431,7 @@ export class TeacherDashboardComponent implements OnDestroy {
           description: data.description,
           standardDuration: durationNum,
         })
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => {
             this.closeLessonModal();
@@ -407,16 +441,20 @@ export class TeacherDashboardComponent implements OnDestroy {
                 .find((g) => g.id === currentClass.id) || null;
             this.selectedClass.set(updatedClass);
           },
-          error: (err) => console.error("Failed to update lesson", err),
+          error: (err) => {
+            this.triggerToast('Falha ao atualizar aula. Tente novamente.');
+            console.error("Failed to update lesson", err);
+          },
         });
     } else {
+      this.isLoading.set(true);
       this.codeService
         .addLessonToClass(currentClass.id, {
           title: data.title,
           description: data.description,
           standardDuration: durationNum,
         })
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => {
             this.closeLessonModal();
@@ -426,7 +464,10 @@ export class TeacherDashboardComponent implements OnDestroy {
                 .find((g) => g.id === currentClass.id) || null;
             this.selectedClass.set(updatedClass);
           },
-          error: (err) => console.error("Failed to add lesson", err),
+          error: (err) => {
+            this.triggerToast('Falha ao criar aula. Tente novamente.');
+            console.error("Failed to add lesson", err);
+          },
         });
     }
     this.closeLessonModal();
@@ -440,9 +481,10 @@ export class TeacherDashboardComponent implements OnDestroy {
     const currentClass = this.selectedClass();
     if (!currentClass) return;
     if (confirm("Tem certeza que deseja remover esta aula?")) {
+      this.isLoading.set(true);
       this.codeService
         .removeLessonFromClass(currentClass.id, lessonId)
-        .pipe(takeUntil(this.destroyed))
+        .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
         .subscribe({
           next: () => {
             const updatedClass =
@@ -451,7 +493,10 @@ export class TeacherDashboardComponent implements OnDestroy {
                 .find((g) => g.id === currentClass.id) || null;
             this.selectedClass.set(updatedClass);
           },
-          error: (err) => console.error("Failed to remove lesson", err),
+          error: (err) => {
+            this.triggerToast('Falha ao remover aula. Tente novamente.');
+            console.error("Failed to remove lesson", err);
+          },
         });
     }
   }
@@ -532,15 +577,19 @@ export class TeacherDashboardComponent implements OnDestroy {
   issueCertificateInManager() {
     const data = this.certificateManagerData();
     if (!data) return;
+    this.isLoading.set(true);
     this.codeService
       .issueCertificate(data.student.id, data.classGroup.id)
-      .pipe(takeUntil(this.destroyed))
+      .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
       .subscribe({
         next: (newCert) => {
           this.certificateManagerData.set({ ...data, existingCert: newCert });
           this.triggerToast("Certificado emitido com sucesso!");
         },
-        error: (err) => console.error("Failed to issue certificate", err),
+        error: (err) => {
+          this.triggerToast('Falha ao emitir certificado. Tente novamente.');
+          console.error("Failed to issue certificate", err);
+        },
       });
   }
 
