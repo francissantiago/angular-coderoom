@@ -239,14 +239,8 @@ export class CodeService {
   
   saveAttendance(classId: number, date: string, presentStudentIds: number[]) {
       // This acts as an update or insert for a specific date without lesson context
-      // Ideally we use registerClassSession, but for compatibility with the basic modal:
-      const existing = this.getAttendanceRecord(classId, date);
-      if(existing) {
-          // We don't have an update method exposed in attendance service yet for full object,
-          // but we can simulate it or just add a simple update method there. 
-          // For now, let's just assume we are using the new SessionModal primarily.
-          console.warn("Use SessionModal for full fidelity.");
-      }
+      // Delegate to AttendanceService which exposes an Observable for persistence.
+      return this.attendanceService.saveAttendance(classId, date, presentStudentIds);
   }
 
   getClassSessions(classId: number): ClassSession[] {

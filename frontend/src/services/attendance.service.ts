@@ -97,6 +97,43 @@ export class AttendanceService {
     return forkJoin(observables).pipe(catchError(this.handlerErrors.handleError));
   }
 
+  /**
+   * Salva (insere ou atualiza) o registro de presença para uma data específica.
+   * Retorna o `Observable` que completa quando a persistência terminar.
+   */
+  saveAttendance(classId: number, date: string, presentStudentIds: number[]): Observable<ClassSession> {
+    const existing = this.getSessionsByClass(classId).find(s => s.date === date);
+
+    if (existing) {
+      const updated: ClassSession = { ...existing, presentStudentIds };
+      return this.http.put<ClassSession>(`${this.apiUrl}/class-sessions/${existing.id}`, updated, { headers: this.headers }).pipe(
+        retry({
+          count: this.api_retry_count,
+          delay: (error, retryCount) => {
+            if (error.status < 500) throw error;
+            console.warn(`Tentativa ${retryCount} de atualizar presença devido a erro:`, error);
+            return timer(retryCount * 2000);
+          },
+        }),
+        tap((saved) => {
+          // Atualiza o sinal com a sessão modificada
+          this.sessions.update((s) => s.map((x) => (x.id === saved.id ? saved : x)));
+        }),
+        catchError(this.handlerErrors.handleError)
+      );
+    }
+
+    // Não existe sessão para a data: criar nova
+    const payload: Omit<ClassSession, 'id'> = {
+      classId,
+      date,
+      lessonId: null,
+      presentStudentIds,
+    };
+
+    return this.registerSession(payload).pipe(catchError(this.handlerErrors.handleError));
+  }
+
   // Calculate frequency based on ALL sessions given to that class
   getStudentAttendancePercentage(studentId: number, classId: number): number {
       const classSessions = this.sessions().filter(s => s.classId === classId);
