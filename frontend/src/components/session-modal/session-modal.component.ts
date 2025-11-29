@@ -56,12 +56,14 @@ export class SessionModalComponent implements OnInit, OnDestroy {
 
   ngOnInit() {
     const map: Record<number, boolean> = {};
-    this.students().forEach((s) => (map[s.id] = true));
+    const studentList = this.students() || [];
+    studentList.forEach((s) => (map[s.id] = true));
     this.presenceMap.set(map);
 
-    // Default to first lesson if available
-    if (this.classGroup().lessons.length > 0) {
-      this.selectedLessonId.set(this.classGroup().lessons[0].id);
+    // Default to first lesson if available (guard for null/undefined lessons)
+    const lessons = (this.classGroup() && this.classGroup().lessons) || [];
+    if (lessons.length > 0) {
+      this.selectedLessonId.set(lessons[0].id);
     }
   }
 
