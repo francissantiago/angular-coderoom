@@ -6,9 +6,10 @@ import {
   inject,
   signal,
   computed,
+  OnInit,
   OnDestroy,
 } from "@angular/core";
-import { Subject, takeUntil } from "rxjs";
+import { Subject, takeUntil, finalize } from "rxjs";
 import { CommonModule } from "@angular/common";
 import {
   CodeService,
@@ -19,12 +20,13 @@ import {
 
 @Component({
   selector: "app-session-modal",
+  standalone: true,
   templateUrl: "./session-modal.component.html",
   styleUrls: ["./session-modal.component.scss"],
   imports: [CommonModule],
   changeDetection: ChangeDetectionStrategy.OnPush,
 })
-export class SessionModalComponent implements OnDestroy {
+export class SessionModalComponent implements OnInit, OnDestroy {
   classGroup = input.required<ClassGroup>();
   students = input.required<Student[]>();
 
@@ -40,6 +42,10 @@ export class SessionModalComponent implements OnDestroy {
 
   // Presence Map
   presenceMap = signal<Record<number, boolean>>({});
+
+  // Loading and error state
+  isLoading = signal(false);
+  errorMessage = signal('');
 
   constructor() {
     // Initialize all students as present by default
@@ -111,6 +117,8 @@ export class SessionModalComponent implements OnDestroy {
       .map(Number)
       .filter((id) => map[id]);
 
+    this.isLoading.set(true);
+
     this.codeService
       .registerClassSession({
         classId: this.classGroup().id,
@@ -119,10 +127,14 @@ export class SessionModalComponent implements OnDestroy {
         observation: this.observation(),
         presentStudentIds: presentIds,
       })
-      .pipe(takeUntil(this.destroyed))
+      .pipe(takeUntil(this.destroyed), finalize(() => this.isLoading.set(false)))
       .subscribe({
         next: () => this.close.emit(),
-        error: (err) => console.error("Failed to register class session", err),
+        error: (err) => {
+          const msg = err?.message || 'Falha ao registrar aula. Tente novamente.';
+          this.errorMessage.set(msg);
+          console.error("Failed to register class session", err);
+        },
       });
   }
 
