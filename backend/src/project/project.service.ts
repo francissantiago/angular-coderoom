@@ -7,7 +7,8 @@ export class ProjectService {
   constructor(@InjectModel(Project) private projectModel: typeof Project) {}
 
   async create(data: Partial<Project>): Promise<Project> {
-    return this.projectModel.create(data as any);
+    const payload = data;
+    return this.projectModel.create(payload);
   }
 
   async findAll(): Promise<Project[]> {
@@ -21,7 +22,7 @@ export class ProjectService {
   async update(id: number, data: Partial<Project>): Promise<Project | null> {
     const project = await this.findOne(id);
     if (!project) return null;
-    return project.update(data as any);
+    return project.update(data);
   }
 
   async remove(id: number): Promise<boolean> {

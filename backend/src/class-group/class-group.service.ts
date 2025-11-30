@@ -1,6 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
-import { ClassGroup } from '../models/class-group.model';
+import { ClassGroup, ClassGroupWithMixins } from '../models/class-group.model';
 import { Lesson } from '../models/lesson.model';
 import { Student } from '../models/student.model';
 
@@ -10,26 +10,37 @@ export class ClassGroupService {
     @InjectModel(ClassGroup) private classGroupModel: typeof ClassGroup,
   ) {}
 
-  async create(data: Partial<ClassGroup>): Promise<ClassGroup | null> {
+  async create(
+    data: Partial<ClassGroup> & { studentIds?: number[] },
+  ): Promise<ClassGroupWithMixins | null> {
     // Accept optional `studentIds` in dto to set associations on creation
-    const studentIds = (data as any).studentIds as number[] | undefined;
-    const payload = { ...data } as any;
-    delete payload.studentIds;
-    const group = await this.classGroupModel.create(payload);
-    if (studentIds && Array.isArray(studentIds)) {
-      // set association (will create entries in class_group_students)
-      // @ts-ignore - Sequelize mixin
-      await (group as any).$set('students', studentIds);
+    const { studentIds, ...payload } = data;
+    const group = (await this.classGroupModel.create(
+      payload as Partial<ClassGroup>,
+    )) as unknown as ClassGroupWithMixins;
+    if (Array.isArray(studentIds) && studentIds.length > 0) {
+      const numericIds: number[] = studentIds
+        .map((v) => Number(v))
+        .filter((n) => Number.isInteger(n));
+      if (numericIds.length > 0) {
+        // numericIds validated above; suppress linter false-positive
+
+        await group.$set?.('students', numericIds);
+      }
     }
     return this.findOne(group.id);
   }
 
-  async findAll(): Promise<ClassGroup[]> {
-    return this.classGroupModel.findAll({ include: [Lesson, Student] });
+  async findAll(): Promise<ClassGroupWithMixins[]> {
+    return (await this.classGroupModel.findAll({
+      include: [Lesson, Student],
+    })) as unknown as ClassGroupWithMixins[];
   }
 
-  async findOne(id: number): Promise<ClassGroup | null> {
-    return this.classGroupModel.findByPk(id, { include: [Lesson, Student] });
+  async findOne(id: number): Promise<ClassGroupWithMixins | null> {
+    return (await this.classGroupModel.findByPk(id, {
+      include: [Lesson, Student],
+    })) as unknown as ClassGroupWithMixins | null;
   }
 
   async update(
@@ -38,14 +49,19 @@ export class ClassGroupService {
   ): Promise<ClassGroup | null> {
     const group = await this.findOne(id);
     if (!group) return null;
-    const studentIds = (data as any).studentIds as number[] | undefined;
-    const payload = { ...data } as any;
-    delete payload.studentIds;
-    await group.update(payload);
-    if (studentIds && Array.isArray(studentIds)) {
-      // update associations
-      // @ts-ignore
-      await (group as any).$set('students', studentIds);
+    const { studentIds, ...payload } = data as Partial<ClassGroup> & {
+      studentIds?: number[];
+    };
+    await group.update(payload as Partial<ClassGroup>);
+    if (Array.isArray(studentIds) && studentIds.length > 0) {
+      const numericIds: number[] = studentIds
+        .map((v) => Number(v))
+        .filter((n) => Number.isInteger(n));
+      if (numericIds.length > 0) {
+        // numericIds validated above; suppress linter false-positive
+
+        await group.$set?.('students', numericIds);
+      }
     }
     return this.findOne(group.id);
   }

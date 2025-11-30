@@ -12,12 +12,17 @@ export class ClassSessionService {
     @InjectModel(ClassGroup) private classGroupModel: typeof ClassGroup,
   ) {}
 
-  async create(data: Partial<ClassSession>): Promise<ClassSession> {
+  async create(
+    data: Partial<ClassSession> & {
+      classGroupId?: number;
+      classId?: number;
+      lessonId?: number;
+      lesson_id?: number;
+    },
+  ): Promise<ClassSession> {
     // Validate foreign keys before attempting DB insert to provide clearer errors
-    const payload: any = { ...(data as any) };
-
-    // support both old (classId/lessonId) and new (classGroupId/lessonId) keys
-    const classGroupId = payload.classGroupId ?? payload.classId;
+    // support both old (classId/lessonId) and new (classGroupId/lesson_id) keys
+    const classGroupId = data.classGroupId ?? data.classId;
     if (classGroupId == null) {
       throw new BadRequestException('classGroupId (or classId) is required');
     }
@@ -29,7 +34,7 @@ export class ClassSessionService {
       );
     }
 
-    const lessonId = payload.lessonId ?? payload.lesson_id;
+    const lessonId = data.lessonId ?? data.lesson_id;
     if (lessonId != null) {
       const lesson = await this.lessonModel.findByPk(lessonId);
       if (!lesson) {
@@ -37,9 +42,13 @@ export class ClassSessionService {
       }
     }
 
+    const payload = {
+      ...(data as Partial<ClassSession>),
+    } as Partial<ClassSession>;
     // ensure we pass the new attribute name to the model
     payload.classGroupId = classGroupId;
-    delete payload.classId;
+    // remove legacy key if present to avoid unknown column errors
+    delete (payload as unknown as Record<string, unknown>).classId;
 
     return this.model.create(payload);
   }
@@ -58,7 +67,7 @@ export class ClassSessionService {
   ): Promise<ClassSession | null> {
     const cs = await this.findOne(id);
     if (!cs) return null;
-    return cs.update(data as any);
+    return cs.update(data);
   }
 
   async remove(id: number): Promise<boolean> {

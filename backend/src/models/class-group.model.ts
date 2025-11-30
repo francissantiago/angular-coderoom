@@ -3,7 +3,6 @@ import {
   Column,
   Model,
   HasMany,
-  DataType,
   BelongsToMany,
 } from 'sequelize-typescript';
 import { Project } from './project.model';
@@ -40,4 +39,16 @@ export class ClassGroup extends Model {
 
   @HasMany(() => ClassSession)
   declare sessions: ClassSession[];
+
+  // Sequelize association mixins (typed locally to avoid `any` usage elsewhere)
+  // these are used by service code to manage relations (e.g. `$set('students', ids)`)
+  $set?: (key: string, ids: number[]) => Promise<void>;
+  $add?: (key: string, ids: number[] | number) => Promise<void>;
+  $remove?: (key: string, ids: number[] | number) => Promise<void>;
 }
+
+export type ClassGroupWithMixins = ClassGroup & {
+  $set?: (key: string, ids: number[]) => Promise<void>;
+  $add?: (key: string, ids: number[] | number) => Promise<void>;
+  $remove?: (key: string, ids: number[] | number) => Promise<void>;
+};

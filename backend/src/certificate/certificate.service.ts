@@ -7,7 +7,8 @@ export class CertificateService {
   constructor(@InjectModel(Certificate) private model: typeof Certificate) {}
 
   async create(data: Partial<Certificate>): Promise<Certificate> {
-    return this.model.create(data as any);
+    const payload = data;
+    return this.model.create(payload);
   }
 
   async findAll(): Promise<Certificate[]> {
@@ -24,7 +25,7 @@ export class CertificateService {
   ): Promise<Certificate | null> {
     const cert = await this.findOne(id);
     if (!cert) return null;
-    return cert.update(data as any);
+    return cert.update(data);
   }
 
   async remove(id: number): Promise<boolean> {

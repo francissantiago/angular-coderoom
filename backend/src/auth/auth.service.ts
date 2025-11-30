@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, Logger } from '@nestjs/common';
+import { Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { InjectModel } from '@nestjs/sequelize';
 import * as bcrypt from 'bcrypt';
@@ -10,10 +10,13 @@ export class AuthService {
   constructor(
     @InjectModel(User)
     private userModel: typeof User,
-    private jwtService: JwtService,
+    private readonly jwtService: JwtService,
   ) {}
 
-  async validateUser(email: string, password: string): Promise<any> {
+  async validateUser(
+    email: string,
+    password: string,
+  ): Promise<Record<string, unknown> | null> {
     const user = await this.userModel.findOne({ where: { email } });
     this.logger.debug(`Validating user: ${email} | found=${!!user}`);
 
@@ -26,21 +29,32 @@ export class AuthService {
     }
 
     try {
-      const passwordMatches = await bcrypt.compare(password, user.password);
+      const dbPassword = user.password;
+      const passwordMatches = await bcrypt.compare(password, dbPassword ?? '');
       if (passwordMatches) {
         this.logger.debug(`Password match for: ${email}`);
-        const { password, ...result } = user.toJSON();
-        return result;
+        const fullRaw: unknown = user.toJSON();
+        const full =
+          typeof fullRaw === 'object' && fullRaw !== null
+            ? (fullRaw as Record<string, unknown>)
+            : ({} as Record<string, unknown>);
+        const sanitized = { ...full };
+        delete (sanitized as { password?: unknown }).password;
+        return sanitized as Record<string, unknown>;
       }
       this.logger.debug(`Invalid credentials for: ${email}`);
       return null;
-    } catch (error) {
-      this.logger.error(`Error validating password for user ${email}`, error);
+    } catch (error: unknown) {
+      this.logger.error(
+        `Error validating password for user ${email} - ${String(error)}`,
+      );
       return null;
     }
   }
 
-  async login(user: any) {
+  login(user: { email: string; id: number; role?: string; name?: string }): {
+    access_token: string;
+  } {
     const payload = {
       email: user.email,
       sub: user.id,

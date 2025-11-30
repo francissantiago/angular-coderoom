@@ -15,7 +15,7 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
-  create(@Body() createStudentDto: any): Promise<Student> {
+  create(@Body() createStudentDto: Partial<Student>): Promise<Student> {
     return this.studentsService.create(createStudentDto);
   }
 
@@ -32,7 +32,7 @@ export class StudentsController {
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() updateStudentDto: any,
+    @Body() updateStudentDto: Partial<Student>,
   ): Promise<Student | null> {
     return this.studentsService.update(+id, updateStudentDto);
   }
