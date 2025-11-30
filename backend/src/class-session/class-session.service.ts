@@ -50,30 +50,52 @@ export class ClassSessionService {
     // remove legacy key if present to avoid unknown column errors
     delete (payload as unknown as Record<string, unknown>).classId;
 
-    return this.model.create(payload);
+    const created = await this.model.create(payload as any);
+    return this.mapSession(created);
   }
 
   async findAll(): Promise<ClassSession[]> {
-    return this.model.findAll();
+    const rows = await this.model.findAll();
+    return rows.map((r) => this.mapSession(r)) as unknown as ClassSession[];
   }
 
   async findOne(id: number): Promise<ClassSession | null> {
-    return this.model.findByPk(id);
+    const row = await this.model.findByPk(id);
+    if (!row) return null;
+    return this.mapSession(row) as unknown as ClassSession;
   }
 
   async update(
     id: number,
     data: Partial<ClassSession>,
   ): Promise<ClassSession | null> {
-    const cs = await this.findOne(id);
-    if (!cs) return null;
-    return cs.update(data);
+    const csModel = await this.model.findByPk(id);
+    if (!csModel) return null;
+    await csModel.update(data as any);
+    return this.mapSession(csModel) as unknown as ClassSession;
   }
 
   async remove(id: number): Promise<boolean> {
     const cs = await this.findOne(id);
     if (!cs) return false;
-    await cs.destroy();
+    // cs here may be a plain object after mapping; use model instance to destroy
+    const modelInstance = await this.model.findByPk(id);
+    if (!modelInstance) return false;
+    await modelInstance.destroy();
     return true;
+  }
+
+  // Normalize model instance into shape expected by frontend
+  private mapSession(row: InstanceType<typeof ClassSession> | ClassSession): any {
+    const raw = (row as any).toJSON ? (row as any).toJSON() : row;
+    // Normalize snake_case -> camelCase keys expected by frontend
+    const normalized: any = { ...raw };
+    // classId expected by frontend (legacy key)
+    normalized.classId = raw.class_group_id ?? raw.classGroupId ?? raw.classId ?? null;
+    // lessonId
+    normalized.lessonId = raw.lesson_id ?? raw.lessonId ?? null;
+    // presentStudentIds may be stored as present_student_ids or presentStudentIds
+    normalized.presentStudentIds = raw.present_student_ids ?? raw.presentStudentIds ?? [];
+    return normalized;
   }
 }
