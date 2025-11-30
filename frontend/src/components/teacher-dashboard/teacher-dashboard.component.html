@@ -42,7 +42,7 @@
               <div>
                 <div class="flex justify-between items-start mb-1">
                   <h3 class="text-lg font-bold text-green-600 dark:text-green-400 group-hover:text-green-500 dark:group-hover:text-green-300 transition-colors">{{ classGroup.name }}</h3>
-                  <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded-full w-[30%] flex justify-center">{{ classGroup.studentIds.length }} alunos</span>
+                  <span class="bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-300 text-xs px-2 py-1 rounded-full w-[30%] flex justify-center">{{ (classGroup.students?.length || classGroup.studentIds?.length || 0) }} alunos</span>
                 </div>
                 <p class="text-xs text-blue-600 dark:text-blue-300 font-mono mb-3 flex items-center gap-1">
                    <svg xmlns="http://www.w3.org/2000/svg" class="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>

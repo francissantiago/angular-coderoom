@@ -29,7 +29,11 @@ export class AssignmentModalComponent {
   eligibleStudents = computed<Student[]>(() => {
     const classGroup = this.projectClass();
     if (!classGroup) return [];
-    return this.allStudents().filter(s => classGroup.studentIds.includes(s.id));
+    return this.allStudents().filter(s => {
+      const inStudents = (classGroup.students || []).some(st => st.id === s.id);
+      const inLegacy = (classGroup.studentIds || []).includes(s.id);
+      return inStudents || inLegacy;
+    });
   });
 
   // Local state for checkbox management

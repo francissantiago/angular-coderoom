@@ -40,7 +40,9 @@ export class ClassModalComponent implements OnInit, OnDestroy {
         this.className.set(classGroup.name);
         this.classDescription.set(classGroup.description);
         this.classSchedule.set(classGroup.schedule);
-        this.selectedStudentIds.set(new Set(classGroup.studentIds));
+        // Prefer normalized `students` array; fall back to legacy `studentIds`.
+        const ids = (classGroup.students && classGroup.students.map(s => s.id)) || classGroup.studentIds || [];
+        this.selectedStudentIds.set(new Set(ids));
       } else {
         // Reset for new class creation
         this.className.set('');

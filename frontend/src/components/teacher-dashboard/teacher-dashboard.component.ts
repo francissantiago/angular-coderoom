@@ -85,9 +85,11 @@ export class TeacherDashboardComponent implements OnInit, OnDestroy {
   selectedClassStudents = computed(() => {
     const cGroup = this.selectedClass();
     if (!cGroup) return [];
-    return this.rawAllStudents().filter((s) =>
-      cGroup.studentIds.includes(s.id)
-    );
+    return this.rawAllStudents().filter((s) => {
+      const inStudents = (cGroup.students || []).some((st) => st.id === s.id);
+      const inLegacy = (cGroup.studentIds || []).includes(s.id);
+      return inStudents || inLegacy;
+    });
   });
 
   // State for modals
@@ -153,8 +155,8 @@ export class TeacherDashboardComponent implements OnInit, OnDestroy {
           this.classStudentTable.setSource(this.selectedClassStudents());
           this.classStudentTable.setPageSize(8); // Smaller page for grid cards
 
-          // Lessons
-          this.lessonTable.setSource(cGroup.lessons);
+          // Lessons (defensive: prefer normalized lessons array)
+          this.lessonTable.setSource(cGroup.lessons || []);
 
           // Sessions
           const sessions = allSess
