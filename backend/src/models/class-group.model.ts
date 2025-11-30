@@ -1,7 +1,17 @@
-import { Table, Column, Model, HasMany, DataType } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  HasMany,
+  DataType,
+  BelongsToMany,
+} from 'sequelize-typescript';
 import { Project } from './project.model';
 import { ClassSession } from './class-session.model';
 import { Lesson } from './lesson.model';
+import { Student } from './student.model';
+
+// through model/table name: class_group_students
 
 @Table({ tableName: 'class_groups', timestamps: true })
 export class ClassGroup extends Model {
@@ -14,11 +24,16 @@ export class ClassGroup extends Model {
   @Column
   declare schedule: string;
 
-  @Column({ type: DataType.JSON, allowNull: true })
-  declare studentIds: number[] | null;
+  @HasMany(() => Lesson, { foreignKey: 'class_group_id' })
+  declare lessons: Lesson[];
 
-  @Column({ type: DataType.JSON, allowNull: true })
-  declare lessons: Lesson[] | null;
+  @BelongsToMany(
+    () => Student,
+    'class_group_students',
+    'class_group_id',
+    'student_id',
+  )
+  declare students: Student[];
 
   @HasMany(() => Project)
   declare projects: Project[];

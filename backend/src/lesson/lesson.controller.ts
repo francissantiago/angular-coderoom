@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+} from '@nestjs/common';
 import { LessonService } from './lesson.service';
 import { Lesson } from '../models/lesson.model';
 
@@ -22,7 +30,10 @@ export class LessonController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: Partial<Lesson>): Promise<Lesson | null> {
+  update(
+    @Param('id') id: string,
+    @Body() dto: Partial<Lesson>,
+  ): Promise<Lesson | null> {
     return this.service.update(+id, dto);
   }
 

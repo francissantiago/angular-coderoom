@@ -1,4 +1,11 @@
-import { Table, Column, Model, ForeignKey, BelongsTo, DataType } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  ForeignKey,
+  BelongsTo,
+  DataType,
+} from 'sequelize-typescript';
 import { ClassGroup } from './class-group.model';
 import { Lesson } from './lesson.model';
 
@@ -12,17 +19,16 @@ export class ClassSession extends Model {
 
   @Column({ type: DataType.JSON, allowNull: true })
   declare presentStudentIds: number[] | null;
-
   @ForeignKey(() => ClassGroup)
-  @Column
-  declare classId: number;
+  @Column({ field: 'class_group_id', type: DataType.INTEGER, allowNull: true })
+  declare classGroupId?: number | null;
 
   @BelongsTo(() => ClassGroup)
   declare classGroup: ClassGroup;
 
   @ForeignKey(() => Lesson)
-  @Column
-  declare lessonId: number;
+  @Column({ field: 'lesson_id', type: DataType.INTEGER, allowNull: true })
+  declare lessonId?: number | null;
 
   @BelongsTo(() => Lesson)
   declare lesson: Lesson;

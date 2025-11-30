@@ -18,7 +18,10 @@ export class CertificateService {
     return this.model.findByPk(id);
   }
 
-  async update(id: number, data: Partial<Certificate>): Promise<Certificate | null> {
+  async update(
+    id: number,
+    data: Partial<Certificate>,
+  ): Promise<Certificate | null> {
     const cert = await this.findOne(id);
     if (!cert) return null;
     return cert.update(data as any);

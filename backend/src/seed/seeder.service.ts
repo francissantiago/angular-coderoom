@@ -1,10 +1,11 @@
-import { Injectable, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit, Logger } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { User } from '../models/user.model';
 import * as bcrypt from 'bcrypt';
 
 @Injectable()
 export class SeederService implements OnModuleInit {
+  private readonly logger = new Logger(SeederService.name);
   constructor(
     @InjectModel(User)
     private userModel: typeof User,
@@ -26,13 +27,13 @@ export class SeederService implements OnModuleInit {
         role: 'teacher',
         password: hashedPassword,
       });
-      console.log('Admin user created successfully');
+      this.logger.log('Admin user created successfully');
     } else if (!user.password) {
       const hashedPassword = await bcrypt.hash('admin123', 10);
       await user.update({ password: hashedPassword });
-      console.log('Admin user password updated');
+      this.logger.log('Admin user password updated');
     } else {
-      console.log('Admin user already exists with password');
+      this.logger.log('Admin user already exists with password');
     }
   }
 }

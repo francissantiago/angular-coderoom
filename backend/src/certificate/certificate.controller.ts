@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+} from '@nestjs/common';
 import { CertificateService } from './certificate.service';
 import { Certificate } from '../models/certificate.model';
 
@@ -22,7 +30,10 @@ export class CertificateController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: Partial<Certificate>): Promise<Certificate | null> {
+  update(
+    @Param('id') id: string,
+    @Body() dto: Partial<Certificate>,
+  ): Promise<Certificate | null> {
     return this.service.update(+id, dto);
   }
 
