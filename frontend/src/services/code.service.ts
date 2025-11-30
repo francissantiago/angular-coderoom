@@ -91,7 +91,7 @@ export class CodeService {
     const studentId = this.currentStudentId;
     if(!studentId) return [];
 
-    return this.classGroups().filter(c => c.studentIds.includes(studentId));
+    return this.classGroups().filter(c => (c.students || []).some(s => s.id === studentId));
   });
 
 

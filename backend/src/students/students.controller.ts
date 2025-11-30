@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Param,
+  Put,
+  Delete,
+} from '@nestjs/common';
 import { StudentsService } from './students.service';
 import { Student } from '../models/student.model';
 
@@ -7,7 +15,7 @@ export class StudentsController {
   constructor(private readonly studentsService: StudentsService) {}
 
   @Post()
-  create(@Body() createStudentDto: any): Promise<Student> {
+  create(@Body() createStudentDto: Partial<Student>): Promise<Student> {
     return this.studentsService.create(createStudentDto);
   }
 
@@ -22,7 +30,10 @@ export class StudentsController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() updateStudentDto: any): Promise<Student | null> {
+  update(
+    @Param('id') id: string,
+    @Body() updateStudentDto: Partial<Student>,
+  ): Promise<Student | null> {
     return this.studentsService.update(+id, updateStudentDto);
   }
 

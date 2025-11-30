@@ -3,7 +3,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { ClassGroup, Lesson } from '../models/domain.models';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, retry, timer, tap, catchError, of, forkJoin } from 'rxjs';
+import { Observable, retry, timer, tap, catchError, of, forkJoin, switchMap } from 'rxjs';
 import { HandleErrors } from './handle-errors.service';
 import { AuthManager } from './auth-manager.service';
 
@@ -83,39 +83,63 @@ export class ClassService {
   }
 
   removeStudentFromClasses(studentId: number): Observable<any> {
-    this.classGroups.update((groups) => groups.map((g) => ({ ...g, studentIds: g.studentIds.filter((id) => id !== studentId) })));
-    const affected = this.classGroups().filter((g) => g.studentIds.includes(studentId) === false);
+    // Update local signal: remove student from each class group's students array
+    this.classGroups.update((groups) =>
+      groups.map((g) => ({ ...g, students: (g.students || []).filter((s) => s.id !== studentId) }))
+    );
+
+    // Persist changes for affected groups by sending studentIds in payload
+    const affected = this.classGroups().filter((g) => (g.students || []).some((s) => s.id === studentId) === false);
     if (affected.length === 0) return of(null);
-    const observables = affected.map((g) => this.http.put(`${this.apiUrl}/class-groups/${g.id}`, g, { headers: this.headers }).pipe(catchError((err) => {
-      console.error('Failed to persist class group update', err);
-      return of(null);
-    })));
+    const observables = affected.map((g) => {
+      const payload = { ...g, studentIds: (g.students || []).map((s) => s.id) } as any;
+      return this.http.put(`${this.apiUrl}/class-groups/${g.id}`, payload, { headers: this.headers }).pipe(
+        catchError((err) => {
+          console.error('Failed to persist class group update', err);
+          return of(null);
+        })
+      );
+    });
     return forkJoin(observables).pipe(catchError(this.handlerErrors.handleError));
   }
 
   addLessonToClass(classId: number, lessonData: Omit<Lesson, 'id'>): Observable<ClassGroup | undefined> {
-    const current = this.classGroups();
-    const updatedGroups = current.map((g) => {
-      if (g.id === classId) {
-        const nextId = g.lessons.length > 0 ? Math.max(...g.lessons.map((m) => m.id)) + 1 : 1;
-        const newLesson: Lesson = { ...lessonData, id: nextId };
-        return { ...g, lessons: [...g.lessons, newLesson] };
-      }
-      return g;
-    });
-    this.classGroups.set(updatedGroups);
-    const updated = updatedGroups.find((g) => g.id === classId);
-    if (!updated) return of(undefined);
-    return this.http.put<ClassGroup>(`${this.apiUrl}/class-groups/${classId}`, updated, { headers: this.headers }).pipe(
+    // First, create a Lesson record on the backend so it exists for FK constraints
+    return this.http.post<Lesson>(`${this.apiUrl}/lessons`, lessonData, { headers: this.headers }).pipe(
       retry({
         count: this.api_retry_count,
         delay: (error, retryCount) => {
           if (error.status < 500) throw error;
-          console.warn(`Tentativa ${retryCount} de salvar aula na turma ${classId} devido a erro:`, error);
+          console.warn(`Tentativa ${retryCount} de criar lesson antes de anexar na turma ${classId}:`, error);
           return timer(retryCount * 2000);
         },
       }),
-      tap((resp) => this.classGroups.update((groups) => groups.map((g) => (g.id === resp.id ? resp : g)))),
+      switchMap((createdLesson) => {
+        // Now append the created lesson (with real id) to the class group's lessons array and persist
+        const current = this.classGroups();
+        const updatedGroups = current.map((g) => {
+          if (g.id === classId) {
+            const existingLessons = g.lessons || [];
+            return { ...g, lessons: [...existingLessons, createdLesson] };
+          }
+          return g;
+        });
+        this.classGroups.set(updatedGroups);
+        const updated = updatedGroups.find((g) => g.id === classId);
+        if (!updated) return of(undefined as any);
+        return this.http.put<ClassGroup>(`${this.apiUrl}/class-groups/${classId}`, updated, { headers: this.headers }).pipe(
+          retry({
+            count: this.api_retry_count,
+            delay: (error, retryCount) => {
+              if (error.status < 500) throw error;
+              console.warn(`Tentativa ${retryCount} de salvar aula na turma ${classId} devido a erro:`, error);
+              return timer(retryCount * 2000);
+            },
+          }),
+          tap((resp) => this.classGroups.update((groups) => groups.map((g) => (g.id === resp.id ? resp : g)))),
+          catchError(this.handlerErrors.handleError)
+        );
+      }),
       catchError(this.handlerErrors.handleError)
     );
   }
@@ -124,7 +148,8 @@ export class ClassService {
     const current = this.classGroups();
     const updatedGroups = current.map((g) => {
       if (g.id === classId) {
-        return { ...g, lessons: g.lessons.map((m) => (m.id === lesson.id ? lesson : m)) };
+        const existingLessons = g.lessons || [];
+        return { ...g, lessons: existingLessons.map((m) => (m.id === lesson.id ? lesson : m)) };
       }
       return g;
     });
@@ -149,7 +174,8 @@ export class ClassService {
     const current = this.classGroups();
     const updatedGroups = current.map((g) => {
       if (g.id === classId) {
-        return { ...g, lessons: g.lessons.filter((m) => m.id !== lessonId) };
+        const existingLessons = g.lessons || [];
+        return { ...g, lessons: existingLessons.filter((m) => m.id !== lessonId) };
       }
       return g;
     });

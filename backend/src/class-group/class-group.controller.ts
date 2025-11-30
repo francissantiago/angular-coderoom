@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+} from '@nestjs/common';
 import { ClassGroupService } from './class-group.service';
 import { ClassGroup } from '../models/class-group.model';
 
@@ -7,7 +15,7 @@ export class ClassGroupController {
   constructor(private readonly service: ClassGroupService) {}
 
   @Post()
-  create(@Body() dto: Partial<ClassGroup>): Promise<ClassGroup> {
+  create(@Body() dto: Partial<ClassGroup>): Promise<ClassGroup | null> {
     return this.service.create(dto);
   }
 
@@ -22,7 +30,10 @@ export class ClassGroupController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: Partial<ClassGroup>): Promise<ClassGroup | null> {
+  update(
+    @Param('id') id: string,
+    @Body() dto: Partial<ClassGroup>,
+  ): Promise<ClassGroup | null> {
     return this.service.update(+id, dto);
   }
 

@@ -25,7 +25,10 @@ export class StudentsService {
     return this.studentModel.findByPk(id);
   }
 
-  async update(id: number, studentData: Partial<Student>): Promise<Student | null> {
+  async update(
+    id: number,
+    studentData: Partial<Student>,
+  ): Promise<Student | null> {
     const student = await this.findOne(id);
     if (!student) return null;
     if (studentData.password) {

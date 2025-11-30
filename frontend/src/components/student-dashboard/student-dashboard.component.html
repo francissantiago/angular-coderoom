@@ -106,7 +106,7 @@
                         </h3>
                         
                         <div class="flex flex-col gap-3">
-                            @for(lesson of classGroup.lessons; track lesson.id) {
+                            @for(lesson of (classGroup.lessons || []); track lesson.id) {
                                 @let stats = getLessonStats(classGroup.id, lesson.id);
                                 
                                 <div class="bg-white dark:bg-[#333] p-3 rounded-lg border border-gray-200 dark:border-gray-700 flex justify-between items-center shadow-sm">
@@ -140,7 +140,7 @@
                                     </div>
                                 </div>
                             }
-                            @if(!classGroup.lessons || classGroup.lessons.length === 0) {
+                            @if(!(classGroup.lessons && classGroup.lessons.length > 0)) {
                                 <div class="text-center py-6 text-gray-500 italic text-sm">
                                     Nenhuma aula planejada.
                                 </div>

@@ -1,4 +1,11 @@
-import { Table, Column, Model, ForeignKey, BelongsTo, DataType } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  ForeignKey,
+  BelongsTo,
+  DataType,
+} from 'sequelize-typescript';
 import { ClassGroup } from './class-group.model';
 
 export interface CodeState {
@@ -31,8 +38,8 @@ export class Project extends Model {
   declare studentSubmissions: StudentSubmission[] | null;
 
   @ForeignKey(() => ClassGroup)
-  @Column
-  declare classId: number;
+  @Column({ field: 'class_group_id', type: DataType.INTEGER, allowNull: true })
+  declare classGroupId?: number | null;
 
   @BelongsTo(() => ClassGroup)
   declare classGroup: ClassGroup;

@@ -1,4 +1,11 @@
-import { Table, Column, Model, ForeignKey, BelongsTo, DataType } from 'sequelize-typescript';
+import {
+  Table,
+  Column,
+  Model,
+  ForeignKey,
+  BelongsTo,
+  DataType,
+} from 'sequelize-typescript';
 import { Student } from './student.model';
 import { ClassGroup } from './class-group.model';
 
@@ -18,8 +25,8 @@ export class Certificate extends Model {
   declare student: Student;
 
   @ForeignKey(() => ClassGroup)
-  @Column
-  declare classId: number;
+  @Column({ field: 'class_group_id', type: DataType.INTEGER, allowNull: true })
+  declare classGroupId?: number | null;
 
   @BelongsTo(() => ClassGroup)
   declare classGroup: ClassGroup;

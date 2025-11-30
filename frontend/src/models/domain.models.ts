@@ -55,7 +55,10 @@ export interface ClassGroup {
   name: string;
   description: string;
   schedule: string; // e.g., "Segundas 15:00 - 16:00"
-  studentIds: number[];
+  // Legacy: optional array of student IDs (kept for backward compatibility)
+  studentIds?: number[];
+  // Prefer normalized relation: full Student objects
+  students?: Student[];
   lessons: Lesson[]; // The planned curriculum
 }
 

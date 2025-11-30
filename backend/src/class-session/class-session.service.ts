@@ -1,13 +1,56 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import { InjectModel } from '@nestjs/sequelize';
 import { ClassSession } from '../models/class-session.model';
+import { Lesson } from '../models/lesson.model';
+import { ClassGroup } from '../models/class-group.model';
 
 @Injectable()
 export class ClassSessionService {
-  constructor(@InjectModel(ClassSession) private model: typeof ClassSession) {}
+  constructor(
+    @InjectModel(ClassSession) private model: typeof ClassSession,
+    @InjectModel(Lesson) private lessonModel: typeof Lesson,
+    @InjectModel(ClassGroup) private classGroupModel: typeof ClassGroup,
+  ) {}
 
-  async create(data: Partial<ClassSession>): Promise<ClassSession> {
-    return this.model.create(data as any);
+  async create(
+    data: Partial<ClassSession> & {
+      classGroupId?: number;
+      classId?: number;
+      lessonId?: number;
+      lesson_id?: number;
+    },
+  ): Promise<ClassSession> {
+    // Validate foreign keys before attempting DB insert to provide clearer errors
+    // support both old (classId/lessonId) and new (classGroupId/lesson_id) keys
+    const classGroupId = data.classGroupId ?? data.classId;
+    if (classGroupId == null) {
+      throw new BadRequestException('classGroupId (or classId) is required');
+    }
+
+    const cls = await this.classGroupModel.findByPk(classGroupId);
+    if (!cls) {
+      throw new BadRequestException(
+        `ClassGroup with id=${classGroupId} not found`,
+      );
+    }
+
+    const lessonId = data.lessonId ?? data.lesson_id;
+    if (lessonId != null) {
+      const lesson = await this.lessonModel.findByPk(lessonId);
+      if (!lesson) {
+        throw new BadRequestException(`Lesson with id=${lessonId} not found`);
+      }
+    }
+
+    const payload = {
+      ...(data as Partial<ClassSession>),
+    } as Partial<ClassSession>;
+    // ensure we pass the new attribute name to the model
+    payload.classGroupId = classGroupId;
+    // remove legacy key if present to avoid unknown column errors
+    delete (payload as unknown as Record<string, unknown>).classId;
+
+    return this.model.create(payload);
   }
 
   async findAll(): Promise<ClassSession[]> {
@@ -18,10 +61,13 @@ export class ClassSessionService {
     return this.model.findByPk(id);
   }
 
-  async update(id: number, data: Partial<ClassSession>): Promise<ClassSession | null> {
+  async update(
+    id: number,
+    data: Partial<ClassSession>,
+  ): Promise<ClassSession | null> {
     const cs = await this.findOne(id);
     if (!cs) return null;
-    return cs.update(data as any);
+    return cs.update(data);
   }
 
   async remove(id: number): Promise<boolean> {

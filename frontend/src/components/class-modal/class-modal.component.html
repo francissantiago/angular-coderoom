@@ -1,13 +1,13 @@
 
 <div class="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" (click)="onClose()">
-  <div class="bg-white dark:bg-[#2d2d2d] rounded-lg shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700" (click)="$event.stopPropagation()">
+  <div class="bg-white dark:bg-[#2d2d2d] rounded-lg shadow-xl w-full max-w-lg border border-gray-200 dark:border-gray-700 flex flex-col max-h-[90vh]" (click)="$event.stopPropagation()">
     <!-- Modal Header -->
     <header class="p-4 border-b border-gray-200 dark:border-gray-600 bg-gray-50 dark:bg-[#1e1e1e] rounded-t-lg">
       <h2 class="text-xl font-bold text-gray-800 dark:text-white">{{ classToEdit() ? 'Editar Turma' : 'Criar Nova Turma' }}</h2>
     </header>
 
     <!-- Modal Body -->
-    <main class="p-6 flex flex-col gap-6">
+    <main class="p-6 flex flex-col gap-6 overflow-y-auto">
         <div>
             <label for="className" class="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Nome da Turma</label>
             <input 

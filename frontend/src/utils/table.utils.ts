@@ -33,7 +33,13 @@ export class TableState<T> {
 
   // 2. Sorted Data (derived from Filtered)
   sortedData = computed(() => {
-    const data = [...this.filteredData()];
+    // defensively resolve filtered set: if filteredData is not a callable signal
+    // fall back to the raw source array so the UI doesn't crash at render time.
+    const filtered = typeof (this.filteredData as any) === 'function'
+      ? this.filteredData()
+      : this.source();
+
+    const data = Array.isArray(filtered) ? [...filtered] : [];
     const col = this.sortColumn();
     const dir = this.sortDirection();
 
@@ -55,7 +61,11 @@ export class TableState<T> {
 
   // 3. Paginated Data (derived from Sorted)
   paginatedData = computed(() => {
-    const data = this.sortedData();
+    const sorted = typeof (this.sortedData as any) === 'function'
+      ? this.sortedData()
+      : this.source();
+
+    const data = Array.isArray(sorted) ? sorted : [];
     const page = this.pageIndex();
     const size = this.pageSize();
     
@@ -64,7 +74,14 @@ export class TableState<T> {
   });
 
   // Metadata
-  totalItems = computed(() => this.filteredData().length);
+  totalItems = computed(() => {
+    const filtered = typeof (this.filteredData as any) === 'function'
+      ? this.filteredData()
+      : this.source();
+
+    return Array.isArray(filtered) ? filtered.length : 0;
+  });
+
   totalPages = computed(() => Math.ceil(this.totalItems() / this.pageSize()));
 
   // --- Actions ---

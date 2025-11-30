@@ -1,4 +1,12 @@
-import { Controller, Get, Post, Put, Delete, Body, Param } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Put,
+  Delete,
+  Body,
+  Param,
+} from '@nestjs/common';
 import { ClassSessionService } from './class-session.service';
 import { ClassSession } from '../models/class-session.model';
 
@@ -22,7 +30,10 @@ export class ClassSessionController {
   }
 
   @Put(':id')
-  update(@Param('id') id: string, @Body() dto: Partial<ClassSession>): Promise<ClassSession | null> {
+  update(
+    @Param('id') id: string,
+    @Body() dto: Partial<ClassSession>,
+  ): Promise<ClassSession | null> {
     return this.service.update(+id, dto);
   }
 

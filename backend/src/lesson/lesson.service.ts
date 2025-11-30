@@ -7,7 +7,8 @@ export class LessonService {
   constructor(@InjectModel(Lesson) private lessonModel: typeof Lesson) {}
 
   async create(data: Partial<Lesson>): Promise<Lesson> {
-    return this.lessonModel.create(data as any);
+    const payload = data;
+    return this.lessonModel.create(payload);
   }
 
   async findAll(): Promise<Lesson[]> {
@@ -21,7 +22,7 @@ export class LessonService {
   async update(id: number, data: Partial<Lesson>): Promise<Lesson | null> {
     const lesson = await this.findOne(id);
     if (!lesson) return null;
-    return lesson.update(data as any);
+    return lesson.update(data);
   }
 
   async remove(id: number): Promise<boolean> {
