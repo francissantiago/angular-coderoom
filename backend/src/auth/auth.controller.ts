@@ -16,6 +16,9 @@ export class AuthController {
     },
   ) {
     const { user } = req;
-    return this.authService.login(user);
+    // `validateUser` returns a sanitized object that may have optional fields
+    // cast to the shape expected by `login` since the guard ensures presence
+    const safeUser = user as { email: string; id: number; role?: string; name?: string };
+    return this.authService.login(safeUser);
   }
 }
