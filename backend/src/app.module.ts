@@ -16,6 +16,8 @@ import { Lesson } from './models/lesson.model';
 import { ClassSession } from './models/class-session.model';
 import { ClassGroup } from './models/class-group.model';
 import { Certificate } from './models/certificate.model';
+import { Attendance } from './models/attendance.model';
+import { AttendanceModule } from './attendance/attendance.module';
 import { SeederService } from './seed/seeder.service';
 
 @Module({
@@ -37,6 +39,7 @@ import { SeederService } from './seed/seeder.service';
         ClassSession,
         ClassGroup,
         Certificate,
+        Attendance,
       ],
     }),
     SequelizeModule.forFeature([User]),
@@ -47,6 +50,7 @@ import { SeederService } from './seed/seeder.service';
     LessonModule,
     ClassSessionModule,
     CertificateModule,
+    AttendanceModule,
   ],
   controllers: [AppController],
   providers: [AppService, SeederService],
