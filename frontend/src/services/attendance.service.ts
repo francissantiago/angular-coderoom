@@ -3,7 +3,7 @@ import { Injectable, signal, inject } from '@angular/core';
 import { ClassSession } from '../models/domain.models';
 import { HttpClient } from '@angular/common/http';
 import { environment } from '../../environments/environment';
-import { Observable, retry, timer, tap, catchError, of, forkJoin } from 'rxjs';
+import { Observable, retry, timer, tap, catchError, of, forkJoin, map } from 'rxjs';
 import { HandleErrors } from './handle-errors.service';
 import { AuthManager } from './auth-manager.service';
 
@@ -26,29 +26,59 @@ export class AttendanceService {
   }
 
   loadSessions() {
-    this.getAll().subscribe({
+    // Fetch sessions and attendances and combine so frontend prefers normalized attendances
+    this.getAllWithAttendances().subscribe({
       next: (list) => this.sessions.set(list || []),
       error: (err) => {
-        console.error('Failed to load sessions', err);
+        console.error('Failed to load sessions or attendances', err);
         this.sessions.set([]);
       },
     });
   }
 
-  getAll(): Observable<ClassSession[]> {
-    return this.http.get<ClassSession[]>(`${this.apiUrl}/class-sessions`, { headers: this.headers }).pipe(
+  // Fetch sessions and attendances and merge presentStudentIds from attendances
+  getAllWithAttendances(): Observable<ClassSession[]> {
+    const sessions$ = this.http.get<ClassSession[]>(`${this.apiUrl}/class-sessions`, { headers: this.headers });
+    const attendances$ = this.http.get<any[]>(`${this.apiUrl}/attendances`, { headers: this.headers }).pipe(
+      catchError((err) => {
+        // If attendances endpoint fails, continue with empty array so sessions still load
+        console.warn('Failed to load attendances, continuing with sessions only', err);
+        return of([] as any[]);
+      })
+    );
+
+    return forkJoin([sessions$, attendances$]).pipe(
       retry({
         count: this.api_retry_count,
         delay: (error, retryCount) => {
           if (error.status < 500) throw error;
-          console.warn(
-            `Tentativa ${retryCount} de recuperar sessões devido a erro:`,
-            error
-          );
+          console.warn(`Tentativa ${retryCount} de recuperar sessões devido a erro:`, error);
           return timer(retryCount * 2000);
         },
       }),
-      catchError(this.handlerErrors.handleError)
+      // Merge attendances into sessions
+      tap(([sessions, attendances]) => {
+        const map = new Map<number, number[]>();
+        (attendances || []).forEach((a: any) => {
+          const sid = a.class_session_id ?? a.classSessionId ?? a.classSessionID ?? a.classSessionId;
+          const studentId = a.student_id ?? a.studentId ?? a.studentID ?? a.studentId;
+          if (!sid || !studentId) return;
+          const arr = map.get(Number(sid)) ?? [];
+          arr.push(Number(studentId));
+          map.set(Number(sid), arr);
+        });
+
+        // mutate sessions array to include presentStudentIds from attendances map
+        sessions.forEach((s: any) => {
+          const sid = s.id ?? s.ID ?? s.sessionId;
+          s.presentStudentIds = map.get(Number(sid)) ?? s.presentStudentIds ?? [];
+        });
+      }),
+      // return only sessions to caller
+      catchError(this.handlerErrors.handleError),
+      // map to first element only (sessions)
+      // forkJoin result [sessions, attendances] -> map to sessions
+      map(([sessions, _attendances]) => sessions as ClassSession[])
     );
   }
 
