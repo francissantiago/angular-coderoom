@@ -59,7 +59,7 @@ module.exports = {
           name: 'fk_certificates_student',
           references: {
             table: 'students',
-            key: 'id',
+            field: 'id',
           },
           onDelete: 'CASCADE',
           onUpdate: 'CASCADE',
