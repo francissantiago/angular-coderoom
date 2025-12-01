@@ -22,9 +22,7 @@ export class HandleErrors {
           errorMessage = 'Erro de conexão. Verifique sua internet. Detalhes: ' + error.message;
           break;
         case 400:
-          errorMessage =
-            'Requisição inválida. Verifique os dados enviados. Detalhes: ' +
-            (error.error?.message || 'Nenhum detalhe disponível.');
+          errorMessage = error.error?.message || 'Requisição inválida. Verifique os dados enviados.';
           break;
         case 401:
           errorMessage = 'Não autorizado. Faça login novamente.';

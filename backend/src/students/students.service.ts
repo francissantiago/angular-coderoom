@@ -1,6 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
 import { InjectModel } from '@nestjs/sequelize';
+import { Sequelize } from 'sequelize-typescript';
 import { Student } from '../models/student.model';
 
 @Injectable()
@@ -14,7 +15,18 @@ export class StudentsService {
     if (studentData.password) {
       studentData.password = await bcrypt.hash(studentData.password, 10);
     }
-    return this.studentModel.create(studentData);
+    try {
+      return await this.studentModel.create(studentData);
+    } catch (error) {
+      if (error.name === 'SequelizeUniqueConstraintError') {
+        const field = Object.keys(error.fields)[0];
+        if (field === 'email') {
+          throw new BadRequestException('Email já está em uso. Por favor, use um email diferente.');
+        }
+        throw new BadRequestException(`O campo ${field} deve ser único.`);
+      }
+      throw error;
+    }
   }
 
   async findAll(): Promise<Student[]> {

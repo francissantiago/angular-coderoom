@@ -291,7 +291,7 @@ export class TeacherDashboardComponent implements OnInit, OnDestroy {
             birthDate: "",
           }),
         error: (err) => {
-          this.triggerToast('Falha ao adicionar aluno. Tente novamente.');
+          this.triggerToast(err.message);
           console.error("Failed to add student", err);
         },
       });
