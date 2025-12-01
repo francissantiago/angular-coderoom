@@ -39,7 +39,7 @@ export class Project extends Model {
 
   @ForeignKey(() => ClassGroup)
   @Column({ field: 'class_group_id', type: DataType.INTEGER, allowNull: true })
-  declare classGroupId?: number | null;
+  declare classId?: number | null;
 
   @BelongsTo(() => ClassGroup)
   declare classGroup: ClassGroup;

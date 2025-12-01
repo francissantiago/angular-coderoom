@@ -49,8 +49,10 @@ export class ClassGroupService {
   ): Promise<ClassGroup | null> {
     const group = await this.findOne(id);
     if (!group) return null;
-    const { studentIds, ...payload } = data as Partial<ClassGroup> & {
+    const { studentIds, lessonIds, lessons, ...payload } = data as Partial<ClassGroup> & {
       studentIds?: number[];
+      lessonIds?: number[];
+      lessons?: { id: number }[];
     };
     await group.update(payload as Partial<ClassGroup>);
     if (Array.isArray(studentIds) && studentIds.length > 0) {
@@ -62,6 +64,15 @@ export class ClassGroupService {
 
         await group.$set?.('students', numericIds);
       }
+    }
+    let finalLessonIds: number[] = [];
+    if (Array.isArray(lessonIds) && lessonIds.length > 0) {
+      finalLessonIds = lessonIds.map((v) => Number(v)).filter((n) => Number.isInteger(n));
+    } else if (Array.isArray(lessons) && lessons.length > 0) {
+      finalLessonIds = lessons.map((l) => l.id).filter((id) => Number.isInteger(id));
+    }
+    if (finalLessonIds.length > 0) {
+      await group.$set?.('lessons', finalLessonIds);
     }
     return this.findOne(group.id);
   }
