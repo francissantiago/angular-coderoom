@@ -15,7 +15,15 @@ export class ClassSessionController {
   constructor(private readonly service: ClassSessionService) {}
 
   @Post()
-  create(@Body() dto: Partial<ClassSession>): Promise<ClassSession> {
+  create(
+    @Body()
+    dto: Partial<ClassSession> & {
+      classGroupId?: number;
+      classId?: number;
+      lessonId?: number;
+      lesson_id?: number;
+    },
+  ): Promise<ClassSession> {
     return this.service.create(dto);
   }
 
@@ -32,7 +40,13 @@ export class ClassSessionController {
   @Put(':id')
   update(
     @Param('id') id: string,
-    @Body() dto: Partial<ClassSession>,
+    @Body()
+    dto: Partial<ClassSession> & {
+      classGroupId?: number;
+      classId?: number;
+      lessonId?: number;
+      lesson_id?: number;
+    },
   ): Promise<ClassSession | null> {
     return this.service.update(+id, dto);
   }

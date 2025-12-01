@@ -3,11 +3,12 @@ import { SequelizeModule } from '@nestjs/sequelize';
 import { ClassSession } from '../models/class-session.model';
 import { Lesson } from '../models/lesson.model';
 import { ClassGroup } from '../models/class-group.model';
+import { Attendance } from '../models/attendance.model';
 import { ClassSessionService } from './class-session.service';
 import { ClassSessionController } from './class-session.controller';
 
 @Module({
-  imports: [SequelizeModule.forFeature([ClassSession, Lesson, ClassGroup])],
+  imports: [SequelizeModule.forFeature([ClassSession, Lesson, ClassGroup, Attendance])],
   controllers: [ClassSessionController],
   providers: [ClassSessionService],
   exports: [ClassSessionService],
